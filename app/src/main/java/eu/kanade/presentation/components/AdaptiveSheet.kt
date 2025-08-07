@@ -1,6 +1,5 @@
 package eu.kanade.presentation.components
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,11 +36,6 @@ fun NavigatorAdaptiveSheet(
                         fadeIn(animationSpec = tween(220, delayMillis = 90)) togetherWith
                             fadeOut(animationSpec = tween(90))
                     },
-                )
-
-                BackHandler(
-                    enabled = sheetNavigator.size > 1,
-                    onBack = sheetNavigator::pop,
                 )
             }
 

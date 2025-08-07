@@ -97,7 +97,10 @@ fun AdaptiveSheet(
                 shape = MaterialTheme.shapes.extraLarge,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 content = {
-                    BackHandler(enabled = alpha > 0f, onBack = internalOnDismissRequest)
+                    BackHandler(
+                        enabled = remember { derivedStateOf { alpha > 0f } }.value,
+                        onBack = internalOnDismissRequest,
+                    )
                     content()
                 },
             )
@@ -249,3 +252,6 @@ private fun <T> AnchoredDraggableState<T>.preUpPostDownNestedScrollConnection(
     @JvmName("offsetToFloat")
     private fun Offset.toFloat(): Float = this.y
 }
+
+private val sheetAnimationSpec = tween<Float>(durationMillis = 350)
+

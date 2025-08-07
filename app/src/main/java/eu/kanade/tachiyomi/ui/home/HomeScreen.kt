@@ -24,7 +24,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -161,10 +160,8 @@ object HomeScreen : Screen() {
             }
 
             val goToLibraryTab = { tabNavigator.current = LibraryTab }
-            BackHandler(
-                enabled = tabNavigator.current != LibraryTab,
-                onBack = goToLibraryTab,
-            )
+
+            BackHandler(enabled = tabNavigator.current != LibraryTab, onBack = goToLibraryTab)
 
             LaunchedEffect(Unit) {
                 launch {
@@ -185,6 +182,7 @@ object HomeScreen : Screen() {
                                 }
                                 BrowseTab
                             }
+
                             is Tab.More -> MoreTab
                         }
 
@@ -202,7 +200,7 @@ object HomeScreen : Screen() {
 
     @Composable
     private fun RowScope.NavigationBarItem(
-        tab: eu.kanade.presentation.util.Tab/* SY --> */,
+        tab: eu.kanade.presentation.util.Tab,/* SY --> */
         alwaysShowLabel: Boolean, /* SY <-- */
     ) {
         val tabNavigator = LocalTabNavigator.current
@@ -287,6 +285,7 @@ object HomeScreen : Screen() {
                             }
                         }
                     }
+
                     BrowseTab::class.isInstance(tab) -> {
                         val count by produceState(initialValue = 0) {
                             Injekt.get<SourcePreferences>().extensionUpdatesCount().changes()
