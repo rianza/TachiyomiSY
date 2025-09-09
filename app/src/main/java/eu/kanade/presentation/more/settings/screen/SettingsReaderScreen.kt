@@ -10,6 +10,8 @@ import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderBottomButton
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.Companion.zoomWideImagesAllowedList
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences.WebtoonScaleType
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerConfig
 import kotlinx.collections.immutable.persistentListOf
@@ -254,6 +256,13 @@ object SettingsReaderScreen : SearchableSettings {
         val dualPageSplit by dualPageSplitPref.collectAsState()
         val rotateToFit by rotateToFitPref.collectAsState()
 
+        // KMK -->
+        val pagedDisableZoomInPref = readerPreferences.pagedDisableZoomIn()
+        val landscapeZoomPref = readerPreferences.landscapeZoom()
+        val pagedDisableZoomIn by pagedDisableZoomInPref.collectAsState()
+        val landscapeZoom by landscapeZoomPref.collectAsState()
+        // KMK <--
+
         return Preference.PreferenceGroup(
             title = stringResource(MR.strings.pager_viewer),
             preferenceItems = persistentListOf(
@@ -305,10 +314,29 @@ object SettingsReaderScreen : SearchableSettings {
                 ),
                 // SY <--
                 Preference.PreferenceItem.SwitchPreference(
-                    preference = readerPreferences.landscapeZoom(),
+                    preference = landscapeZoomPref,
                     title = stringResource(MR.strings.pref_landscape_zoom),
                     enabled = imageScaleType == 1,
                 ),
+                // KMK -->
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.landscapeZoomType(),
+                    entries = ReaderPreferences.LandscapeZoomScaleType.entries
+                        .associateWith { stringResource(it.titleRes) }
+                        .toImmutableMap(),
+                    title = stringResource(KMR.strings.pref_landscape_zoom_type),
+                    enabled = landscapeZoom && imageScaleType in zoomWideImagesAllowedList,
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = pagedDisableZoomInPref,
+                    title = stringResource(KMR.strings.pref_paged_disable_zoom_in),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.pagedDoubleTapZoomEnabled(),
+                    title = stringResource(MR.strings.pref_double_tap_zoom),
+                    enabled = !pagedDisableZoomIn,
+                ),
+                // KMK <--
                 Preference.PreferenceItem.SwitchPreference(
                     preference = readerPreferences.navigateToPan(),
                     title = stringResource(MR.strings.pref_navigate_pan),
@@ -383,6 +411,19 @@ object SettingsReaderScreen : SearchableSettings {
                     title = stringResource(MR.strings.pref_read_with_tapping_inverted),
                     enabled = navMode != 5,
                 ),
+                // KMK -->
+                Preference.PreferenceItem.ListPreference(
+                    preference = readerPreferences.webtoonScaleType(),
+                    entries = WebtoonScaleType.entries
+                        .associateWith { stringResource(it.titleRes) }
+                        .toImmutableMap(),
+                    title = stringResource(KMR.strings.pref_webtoon_scale_type),
+                ),
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = readerPreferences.longStripGapSmartScale(),
+                    title = stringResource(KMR.strings.pref_smart_scale_long_strip_gap),
+                ),
+                // KMK <--
                 Preference.PreferenceItem.SliderPreference(
                     value = webtoonSidePadding,
                     valueRange = ReaderPreferences.let {
