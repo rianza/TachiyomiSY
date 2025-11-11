@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.flowWithLifecycle
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
+import kotlinx.coroutines.CoroutineScope
 import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
@@ -196,6 +197,8 @@ class MangaScreenModel(
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
 
+    private val scope = CoroutineScope(screenModelScope.coroutineContext)
+
     private val successState: State.Success?
         get() = state.value as? State.Success
 
@@ -260,7 +263,7 @@ class MangaScreenModel(
     }
 
     init {
-        screenModelScope.launchIO {
+        scope.launchIO {
             getMangaAndChapters.subscribe(mangaId, applyScanlatorFilter = true)
                 .distinctUntilChanged()
                 // SY -->
@@ -344,7 +347,7 @@ class MangaScreenModel(
                 }
         }
 
-        screenModelScope.launchIO {
+        scope.launchIO {
             getExcludedScanlators.subscribe(mangaId)
                 .flowWithLifecycle(lifecycle)
                 .distinctUntilChanged()
@@ -355,7 +358,7 @@ class MangaScreenModel(
                 }
         }
 
-        screenModelScope.launchIO {
+        scope.launchIO {
             getAvailableScanlators.subscribe(mangaId)
                 .flowWithLifecycle(lifecycle)
                 .distinctUntilChanged()
@@ -382,7 +385,7 @@ class MangaScreenModel(
 
         observeDownloads()
 
-        screenModelScope.launchIO {
+        scope.launchIO {
             val manga = getMangaAndChapters.awaitManga(mangaId)
             // SY -->
             val mergedData = getMergedReferencesById.await(mangaId).takeIf { it.isNotEmpty() }?.let { references ->
