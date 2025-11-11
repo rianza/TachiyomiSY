@@ -73,7 +73,7 @@ abstract class BaseUpdatesGridGlanceWidget(
             .padding(top = topPadding, bottom = bottomPadding)
             .appWidgetBackgroundRadius()
 
-        val manager = GlanceAppWidgetManager(context)
+        val manager = GlanceAppWidgetManager(context.applicationContext)
         val ids = manager.getGlanceIds(javaClass)
         val (rowCount, columnCount) = ids
             .flatMap { manager.getAppWidgetSizes(it) }
