@@ -8,10 +8,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.util.fastAny
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import cafe.adriel.voyager.core.model.StateScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import kotlinx.coroutines.CoroutineScope
 import eu.kanade.core.preference.asState
 import eu.kanade.core.util.addOrRemove
 import eu.kanade.core.util.insertSeparators
@@ -197,8 +198,6 @@ class MangaScreenModel(
     val snackbarHostState: SnackbarHostState = SnackbarHostState(),
 ) : StateScreenModel<MangaScreenModel.State>(State.Loading) {
 
-    private val scope = CoroutineScope(screenModelScope.coroutineContext)
-
     private val successState: State.Success?
         get() = state.value as? State.Success
 
@@ -263,7 +262,7 @@ class MangaScreenModel(
     }
 
     init {
-        scope.launchIO {
+        screenModelScope.launchIO {
             getMangaAndChapters.subscribe(mangaId, applyScanlatorFilter = true)
                 .distinctUntilChanged()
                 // SY -->
@@ -347,7 +346,7 @@ class MangaScreenModel(
                 }
         }
 
-        scope.launchIO {
+        screenModelScope.launchIO {
             getExcludedScanlators.subscribe(mangaId)
                 .flowWithLifecycle(lifecycle)
                 .distinctUntilChanged()
@@ -358,7 +357,7 @@ class MangaScreenModel(
                 }
         }
 
-        scope.launchIO {
+        screenModelScope.launchIO {
             getAvailableScanlators.subscribe(mangaId)
                 .flowWithLifecycle(lifecycle)
                 .distinctUntilChanged()
@@ -385,7 +384,7 @@ class MangaScreenModel(
 
         observeDownloads()
 
-        scope.launchIO {
+        screenModelScope.launchIO {
             val manga = getMangaAndChapters.awaitManga(mangaId)
             // SY -->
             val mergedData = getMergedReferencesById.await(mangaId).takeIf { it.isNotEmpty() }?.let { references ->
@@ -652,12 +651,12 @@ class MangaScreenModel(
                 if (existingManga.favorite) {
                     throw IllegalArgumentException(context.stringResource(SYMR.strings.merge_duplicate))
                 } else {
-                    withNonCancellableContext {
+                ProcessLifecycleOwner.get().lifecycleScope.launchNonCancellable {
                         existingManga?.id?.let {
                             deleteByMergeId.await(it)
                             deleteMangaById.await(it)
                         }
-                    }
+                }.join()
                 }
                 existingManga = getManga.await(mergedManga.url, mergedManga.source)
             }

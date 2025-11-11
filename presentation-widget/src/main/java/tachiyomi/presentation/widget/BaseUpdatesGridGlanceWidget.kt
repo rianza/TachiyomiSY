@@ -73,7 +73,7 @@ abstract class BaseUpdatesGridGlanceWidget(
             .padding(top = topPadding, bottom = bottomPadding)
             .appWidgetBackgroundRadius()
 
-        val manager = GlanceAppWidgetManager(context.applicationContext)
+        val manager = GlanceAppWidgetManager(context)
         val ids = manager.getGlanceIds(javaClass)
         val (rowCount, columnCount) = ids
             .flatMap { manager.getAppWidgetSizes(it) }
@@ -94,7 +94,7 @@ abstract class BaseUpdatesGridGlanceWidget(
                 getUpdates
                     .subscribe(false, DateLimit.toEpochMilli())
                     .map { rawData ->
-                        rawData.prepareData(rowCount, columnCount)
+                        rawData.prepareData(context, rowCount, columnCount)
                     }
             }
             val data by flow.collectAsState(initial = null)
@@ -110,6 +110,7 @@ abstract class BaseUpdatesGridGlanceWidget(
 
     @OptIn(ExperimentalCoilApi::class)
     private suspend fun List<UpdatesWithRelations>.prepareData(
+        context: Context,
         rowCount: Int,
         columnCount: Int,
     ): ImmutableList<Pair<Long, Bitmap?>> {
