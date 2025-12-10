@@ -240,10 +240,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
         } else {
             SubsamplingScaleImageView(context)
         }.apply {
-            setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
             setMinimumTileDpi(180)
+            setTileBackgroundColor(android.graphics.Color.GRAY)
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
@@ -286,10 +286,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 override fun onReady() {
                     setupZoom(config)
                     if (isVisibleOnScreen()) landscapeZoom(true)
-                    if (isWebtoon) {
-                        this@ReaderPageImageView.alpha = 0f
-                        this@ReaderPageImageView.animate().alpha(1f).setDuration(150).start()
-                    }
                     this@ReaderPageImageView.onImageLoaded()
                 }
 
@@ -332,7 +328,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     .precision(Precision.INEXACT)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
-                    .crossfade(if (isWebtoon) 150 else 0)
+                    .crossfade(false)
                     .build()
                     .let(context.imageLoader::enqueue)
             }
@@ -407,7 +403,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     onImageLoadError(result.throwable)
                 },
             )
-            .crossfade(if (isWebtoon) 150 else 0)
+            .crossfade(false)
             .build()
         context.imageLoader.enqueue(request)
     }
