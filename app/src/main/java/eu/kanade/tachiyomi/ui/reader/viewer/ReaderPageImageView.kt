@@ -8,12 +8,10 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.GestureDetector
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.widget.FrameLayout
-import android.widget.ProgressBar
 import androidx.annotation.AttrRes
 import androidx.annotation.CallSuper
 import androidx.annotation.StyleRes
@@ -41,12 +39,6 @@ import eu.kanade.tachiyomi.data.coil.customDecoder
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonSubsamplingImageView
 import eu.kanade.tachiyomi.util.system.animatorDurationScale
 import eu.kanade.tachiyomi.util.view.isVisibleOnScreen
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okio.BufferedSource
 import tachiyomi.core.common.util.system.ImageUtil
 import uy.kohesive.injekt.Injekt
@@ -67,23 +59,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
     @StyleRes defStyleRes: Int = 0,
     private val isWebtoon: Boolean = false,
 ) : FrameLayout(context, attrs, defStyleAttrs, defStyleRes) {
-
-    /**
-     * Coroutine scope used to load images. Must be cancelled when the view is detached.
-     */
-    private var coroutineScope: CoroutineScope? = null
-    private var job: Job? = null
-
-    private var progressBar: ProgressBar? = null
-
-    init {
-        progressBar = ProgressBar(context).apply {
-            isVisible = false
-        }
-        val layoutParams = LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT)
-        layoutParams.gravity = Gravity.CENTER
-        addView(progressBar, layoutParams)
-    }
 
     private val alwaysDecodeLongStripWithSSIV by lazy {
         Injekt.get<BasePreferences>().alwaysDecodeLongStripWithSSIV().get()
@@ -200,29 +175,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
             is AppCompatImageView -> it.dispose()
         }
         it.isVisible = false
-        job?.cancel()
-        job = null
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        coroutineScope = CoroutineScope(Dispatchers.Main)
-    }
-
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        coroutineScope?.cancel()
-        coroutineScope = null
-        job?.cancel()
-        job = null
-    }
-
-    private fun showProgressBar() {
-        progressBar?.isVisible = true
-    }
-
-    private fun hideProgressBar() {
-        progressBar?.isVisible = false
     }
 
     /**
@@ -325,21 +277,19 @@ open class ReaderPageImageView @JvmOverloads constructor(
         data: Any,
         config: Config,
     ) = (pageView as? SubsamplingScaleImageView)?.apply {
-        background = pageBackground
         setDoubleTapZoomDuration(config.zoomDuration.getSystemScaledDuration())
         setMinimumScaleType(config.minimumScaleType)
         setMinimumDpi(1) // Just so that very small image will be fit for initial load
+        setCropBorders(config.cropBorders)
         setOnImageEventListener(
             object : SubsamplingScaleImageView.DefaultOnImageEventListener() {
                 override fun onReady() {
-                    hideProgressBar()
                     setupZoom(config)
                     if (isVisibleOnScreen()) landscapeZoom(true)
                     this@ReaderPageImageView.onImageLoaded()
                 }
 
                 override fun onImageLoadError(e: Exception) {
-                    hideProgressBar()
                     this@ReaderPageImageView.onImageLoadError(e)
                 }
             },
@@ -351,28 +301,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
-                job?.cancel()
-                job = coroutineScope?.launch {
-                    showProgressBar()
-                    val imageSource = withContext(Dispatchers.IO) {
-                        if (isWebtoon && config.cropBorders) {
-                            val cropBorders = ImageUtil.findCropBorders(data.peek())
-                            if (cropBorders != null) {
-                                val regionDecoder = android.graphics.BitmapRegionDecoder.newInstance(data.inputStream(), false)
-                                if (regionDecoder != null) {
-                                    val options = android.graphics.BitmapFactory.Options()
-                                    val bitmap = regionDecoder.decodeRegion(cropBorders, options)
-                                    regionDecoder.recycle()
-                                    return@withContext ImageSource.bitmap(bitmap)
-                                }
-                            }
-                        }
-                        return@withContext ImageSource.inputStream(data.inputStream())
-                    }
-                    setImage(imageSource)
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
-                    isVisible = true
-                }
+                setCropBorders(config.cropBorders && isWebtoon)
+                setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                setImage(ImageSource.inputStream(data.inputStream()))
+                isVisible = true
             }
             else -> {
                 throw IllegalArgumentException("Not implemented for class ${data::class.simpleName}")
