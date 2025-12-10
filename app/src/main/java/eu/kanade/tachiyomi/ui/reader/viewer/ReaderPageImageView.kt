@@ -280,7 +280,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
         setDoubleTapZoomDuration(config.zoomDuration.getSystemScaledDuration())
         setMinimumScaleType(config.minimumScaleType)
         setMinimumDpi(1) // Just so that very small image will be fit for initial load
-        setCropBorders(config.cropBorders)
         setOnImageEventListener(
             object : SubsamplingScaleImageView.DefaultOnImageEventListener() {
                 override fun onReady() {
@@ -301,36 +300,26 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
-                if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                if (isWebtoon && config.cropBorders) {
+                    val cropBorders = ImageUtil.findCropBorders(data.peek())
+                    if (cropBorders != null) {
+                        val regionDecoder = android.graphics.BitmapRegionDecoder.newInstance(data.inputStream(), false)
+                        if (regionDecoder != null) {
+                            val options = android.graphics.BitmapFactory.Options()
+                            val bitmap = regionDecoder.decodeRegion(cropBorders, options)
+                            setImage(ImageSource.bitmap(bitmap))
+                            regionDecoder.recycle()
+                        } else {
+                            setImage(ImageSource.inputStream(data.inputStream()))
+                        }
+                    } else {
+                        setImage(ImageSource.inputStream(data.inputStream()))
+                    }
+                } else {
                     setImage(ImageSource.inputStream(data.inputStream()))
-                    isVisible = true
-                    return@apply
                 }
-
-                ImageRequest.Builder(context)
-                    .data(data)
-                    .memoryCachePolicy(CachePolicy.DISABLED)
-                    .diskCachePolicy(CachePolicy.DISABLED)
-                    .target(
-                        onSuccess = { result ->
-                            val image = result as BitmapImage
-                            setImage(ImageSource.bitmap(image.bitmap))
-                            isVisible = true
-                        },
-                    )
-                    .listener(
-                        onError = { _, result ->
-                            onImageLoadError(result.throwable)
-                        },
-                    )
-                    .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
-                    .cropBorders(config.cropBorders)
-                    .customDecoder(true)
-                    .crossfade(false)
-                    .build()
-                    .let(context.imageLoader::enqueue)
+                setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                isVisible = true
             }
             else -> {
                 throw IllegalArgumentException("Not implemented for class ${data::class.simpleName}")
