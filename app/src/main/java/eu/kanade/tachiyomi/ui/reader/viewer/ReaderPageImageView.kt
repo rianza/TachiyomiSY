@@ -304,10 +304,14 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     val cropBorders = ImageUtil.findCropBorders(data.peek())
                     if (cropBorders != null) {
                         val regionDecoder = android.graphics.BitmapRegionDecoder.newInstance(data.inputStream(), false)
-                        val options = android.graphics.BitmapFactory.Options()
-                        val bitmap = regionDecoder.decodeRegion(cropBorders, options)
-                        setImage(ImageSource.bitmap(bitmap))
-                        regionDecoder.recycle()
+                        if (regionDecoder != null) {
+                            val options = android.graphics.BitmapFactory.Options()
+                            val bitmap = regionDecoder.decodeRegion(cropBorders, options)
+                            setImage(ImageSource.bitmap(bitmap))
+                            regionDecoder.recycle()
+                        } else {
+                            setImage(ImageSource.inputStream(data.inputStream()))
+                        }
                     } else {
                         setImage(ImageSource.inputStream(data.inputStream()))
                     }
