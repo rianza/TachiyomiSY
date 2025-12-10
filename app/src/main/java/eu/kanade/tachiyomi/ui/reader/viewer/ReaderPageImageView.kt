@@ -300,14 +300,16 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
+                val imageSource = ImageSource.inputStream(data.inputStream())
                 if (isWebtoon && config.cropBorders) {
                     val cropBorders = ImageUtil.findCropBorders(data)
                     if (cropBorders != null) {
-                        setDecoderFactory(CroppingRegionDecoderFactory(cropBorders))
+                        CroppingRegionDecoder.cropRect = cropBorders
+                        imageSource.decoderClass(CroppingRegionDecoder::class.java)
                     }
                 }
                 setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
-                setImage(ImageSource.inputStream(data.inputStream()))
+                setImage(imageSource)
                 isVisible = true
             }
             else -> {

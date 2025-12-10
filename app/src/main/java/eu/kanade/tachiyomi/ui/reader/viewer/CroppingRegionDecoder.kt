@@ -1,31 +1,46 @@
 package eu.kanade.tachiyomi.ui.reader.viewer
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.graphics.Point
 import android.graphics.Rect
-import com.davemorrissey.labs.subscaleview.decoder.DecoderFactory
 import com.davemorrissey.labs.subscaleview.decoder.ImageRegionDecoder
+import com.davemorrissey.labs.subscaleview.provider.InputProvider
 import java.io.InputStream
 
 /**
- * A custom region decoder that crops the image based on the provided crop rectangle.
- * The stream is provided by SSIV's init method.
+ * A custom region decoder that crops the image based on a static crop rectangle.
+ *
+ * This implementation is tailored for the `tachiyomiorg/subsampling-scale-image-view` fork.
+ * Due to API limitations (requiring a no-arg constructor), the crop rectangle is passed
+ * via a static companion object property before the decoder is instantiated.
  */
-class CroppingRegionDecoder(
-    private val cropRect: Rect,
-) : ImageRegionDecoder {
+class CroppingRegionDecoder : ImageRegionDecoder {
 
     private lateinit var decoder: BitmapRegionDecoder
     private val decoderLock = Any()
 
-    override fun init(imageStream: InputStream): Point {
+    private val crop: Rect = cropRect ?: Rect(0, 0, 0, 0)
+
+    companion object {
+        /**
+         * Static property to hold the crop rectangle.
+         * This is a workaround for the library's decoder instantiation process.
+         */
+        var cropRect: Rect? = null
+    }
+
+    override fun init(context: Context, provider: InputProvider): Point {
+        var inputStream: InputStream? = null
         try {
-            this.decoder = BitmapRegionDecoder.newInstance(imageStream, false)!!
-            return Point(cropRect.width(), cropRect.height())
+            inputStream = provider.openStream()
+                ?: error("Failed to open InputStream from provider")
+            this.decoder = BitmapRegionDecoder.newInstance(inputStream, false)!!
+            return Point(crop.width(), crop.height())
         } finally {
-            imageStream.close()
+            inputStream?.close()
         }
     }
 
@@ -37,10 +52,10 @@ class CroppingRegionDecoder(
             }
 
             val translatedRect = Rect(
-                sRect.left + cropRect.left,
-                sRect.top + cropRect.top,
-                sRect.right + cropRect.left,
-                sRect.bottom + cropRect.top,
+                sRect.left + crop.left,
+                sRect.top + crop.top,
+                sRect.right + crop.left,
+                sRect.bottom + crop.top,
             )
 
             translatedRect.intersect(Rect(0, 0, decoder.width, decoder.height))
@@ -59,16 +74,5 @@ class CroppingRegionDecoder(
         if (::decoder.isInitialized) {
             decoder.recycle()
         }
-    }
-}
-
-/**
- * Factory for creating [CroppingRegionDecoder] instances.
- */
-class CroppingRegionDecoderFactory(
-    private val cropRect: Rect,
-) : DecoderFactory<ImageRegionDecoder> {
-    override fun make(): ImageRegionDecoder {
-        return CroppingRegionDecoder(cropRect)
     }
 }
