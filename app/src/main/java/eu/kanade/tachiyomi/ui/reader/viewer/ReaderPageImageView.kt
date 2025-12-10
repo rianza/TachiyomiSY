@@ -280,7 +280,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
         setDoubleTapZoomDuration(config.zoomDuration.getSystemScaledDuration())
         setMinimumScaleType(config.minimumScaleType)
         setMinimumDpi(1) // Just so that very small image will be fit for initial load
-        setCropBorders(config.cropBorders)
         setOnImageEventListener(
             object : SubsamplingScaleImageView.DefaultOnImageEventListener() {
                 override fun onReady() {
@@ -301,6 +300,12 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
+                if (isWebtoon && config.cropBorders) {
+                    val cropBorders = ImageUtil.findCropBorders(data)
+                    if (cropBorders != null) {
+                        setRegionDecoderFactory(CroppingRegionDecoderFactory(data, cropBorders))
+                    }
+                }
                 setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
                 setImage(ImageSource.inputStream(data.inputStream()))
                 isVisible = true

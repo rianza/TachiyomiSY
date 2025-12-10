@@ -205,6 +205,151 @@ object ImageUtil {
         RIGHT,
         LEFT,
     }
+
+    /**
+     * Finds the crop borders of an image.
+     *
+     * @param imageSource The image source.
+     * @param stripSize The size of the strips to scan.
+     * @return The crop borders of the image, or null if the image is blank.
+     */
+    fun findCropBorders(imageSource: BufferedSource, stripSize: Int = 100): Rect? {
+        val decoder = try {
+            getBitmapRegionDecoder(imageSource.peek().inputStream())
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e) { "Failed to create BitmapRegionDecoder for border detection" }
+            return null
+        } ?: return null
+
+        val width = decoder.width
+        val height = decoder.height
+
+        try {
+            val top = findTopBorder(decoder, width, height, stripSize)
+            if (top == -1) return null // All white image
+
+            val bottom = findBottomBorder(decoder, width, height, stripSize)
+            val left = findLeftBorder(decoder, width, height, stripSize, top, bottom)
+            val right = findRightBorder(decoder, width, height, stripSize, top, bottom)
+
+            if (left >= right || top >= bottom) return null
+
+            return Rect(left, top, right, bottom)
+        } catch (e: Exception) {
+            logcat(LogPriority.ERROR, e) { "Failed to find crop borders" }
+            return null
+        } finally {
+            decoder.recycle()
+        }
+    }
+
+    private fun findTopBorder(decoder: BitmapRegionDecoder, width: Int, height: Int, stripSize: Int): Int {
+        var top = 0
+        var bitmap: Bitmap? = null
+        while (top < height) {
+            val regionHeight = min(stripSize, height - top)
+            val region = Rect(0, top, width, top + regionHeight)
+            try {
+                bitmap = decoder.decodeRegion(region, null)
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                for (i in pixels.indices) {
+                    if (!pixels[i].isWhite()) {
+                        val y = i / bitmap.width
+                        return top + y
+                    }
+                }
+                top += regionHeight
+            } finally {
+                bitmap?.recycle()
+            }
+        }
+        return -1 // All white
+    }
+
+    private fun findBottomBorder(decoder: BitmapRegionDecoder, width: Int, height: Int, stripSize: Int): Int {
+        var bottom = height
+        var bitmap: Bitmap? = null
+        while (bottom > 0) {
+            val regionHeight = min(stripSize, bottom)
+            val region = Rect(0, bottom - regionHeight, width, bottom)
+            try {
+                bitmap = decoder.decodeRegion(region, null)
+                val pixels = IntArray(bitmap.width * bitmap.height)
+                bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                for (i in pixels.indices.reversed()) {
+                    if (!pixels[i].isWhite()) {
+                        val y = i / bitmap.width
+                        return bottom - (bitmap.height - 1 - y)
+                    }
+                }
+                bottom -= regionHeight
+            } finally {
+                bitmap?.recycle()
+            }
+        }
+        return height
+    }
+
+    private fun findLeftBorder(decoder: BitmapRegionDecoder, width: Int, height: Int, stripSize: Int, top: Int, bottom: Int): Int {
+        var left = 0
+        var bitmap: Bitmap? = null
+        val scanHeight = bottom - top
+        while (left < width) {
+            val regionWidth = min(stripSize, width - left)
+            // Scan a vertical strip within the content bounds found before
+            val region = Rect(left, top, left + regionWidth, bottom)
+            try {
+                // To avoid OOM on very tall images, we only scan a max height of 4096px
+                val options = BitmapFactory.Options()
+                if (scanHeight > 4096) {
+                    options.inSampleSize = scanHeight / 4096
+                }
+                bitmap = decoder.decodeRegion(region, options)
+                for (x in 0 until bitmap.width) {
+                    for (y in 0 until bitmap.height) {
+                        if (!bitmap.getPixel(x, y).isWhite()) {
+                            return left + x
+                        }
+                    }
+                }
+                left += regionWidth
+            } finally {
+                bitmap?.recycle()
+            }
+        }
+        return -1 // All white
+    }
+
+    private fun findRightBorder(decoder: BitmapRegionDecoder, width: Int, height: Int, stripSize: Int, top: Int, bottom: Int): Int {
+        var right = width
+        var bitmap: Bitmap? = null
+        val scanHeight = bottom - top
+        while (right > 0) {
+            val regionWidth = min(stripSize, right)
+            val region = Rect(right - regionWidth, top, right, bottom)
+            try {
+                // To avoid OOM on very tall images, we only scan a max height of 4096px
+                val options = BitmapFactory.Options()
+                if (scanHeight > 4096) {
+                    options.inSampleSize = scanHeight / 4096
+                }
+                bitmap = decoder.decodeRegion(region, options)
+                for (x in bitmap.width - 1 downTo 0) {
+                    for (y in 0 until bitmap.height) {
+                        if (!bitmap.getPixel(x, y).isWhite()) {
+                            return right - (bitmap.width - 1 - x)
+                        }
+                    }
+                }
+                right -= regionWidth
+            } finally {
+                bitmap?.recycle()
+            }
+        }
+        return width
+    }
+
     // SY -->
 
     /**
