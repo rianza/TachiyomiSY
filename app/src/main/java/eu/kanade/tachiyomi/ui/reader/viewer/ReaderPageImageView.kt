@@ -325,18 +325,21 @@ open class ReaderPageImageView @JvmOverloads constructor(
         data: Any,
         config: Config,
     ) = (pageView as? SubsamplingScaleImageView)?.apply {
+        background = pageBackground
         setDoubleTapZoomDuration(config.zoomDuration.getSystemScaledDuration())
         setMinimumScaleType(config.minimumScaleType)
         setMinimumDpi(1) // Just so that very small image will be fit for initial load
         setOnImageEventListener(
             object : SubsamplingScaleImageView.DefaultOnImageEventListener() {
                 override fun onReady() {
+                    hideProgressBar()
                     setupZoom(config)
                     if (isVisibleOnScreen()) landscapeZoom(true)
                     this@ReaderPageImageView.onImageLoaded()
                 }
 
                 override fun onImageLoadError(e: Exception) {
+                    hideProgressBar()
                     this@ReaderPageImageView.onImageLoadError(e)
                 }
             },
@@ -369,7 +372,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     setImage(imageSource)
                     setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
                     isVisible = true
-                    hideProgressBar()
                 }
             }
             else -> {
