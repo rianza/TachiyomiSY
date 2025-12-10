@@ -6,25 +6,27 @@ import android.graphics.BitmapFactory
 import android.graphics.BitmapRegionDecoder
 import android.graphics.Point
 import android.graphics.Rect
-import android.net.Uri
 import com.davemorrissey.labs.subscaleview.decoder.DecoderFactory
 import com.davemorrissey.labs.subscaleview.decoder.ImageRegionDecoder
-import okio.BufferedSource
+import com.davemorrissey.labs.subscaleview.provider.InputProvider
 
 class CroppingRegionDecoder(
-    private val imageSource: BufferedSource,
     private val cropBorders: Rect,
 ) : ImageRegionDecoder {
 
     private lateinit var decoder: BitmapRegionDecoder
 
-    override fun init(context: Context, uri: Uri): Point {
-        val inputStream = imageSource.peek().inputStream()
-        decoder = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-            BitmapRegionDecoder.newInstance(inputStream)!!
-        } else {
-            @Suppress("DEPRECATION")
-            BitmapRegionDecoder.newInstance(inputStream, false)!!
+    override fun init(context: Context, provider: InputProvider): Point {
+        val inputStream = provider.openStream()
+        try {
+            decoder = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                BitmapRegionDecoder.newInstance(inputStream)!!
+            } else {
+                @Suppress("DEPRECATION")
+                BitmapRegionDecoder.newInstance(inputStream, false)!!
+            }
+        } finally {
+            inputStream.close()
         }
         return Point(cropBorders.width(), cropBorders.height())
     }
@@ -54,10 +56,9 @@ class CroppingRegionDecoder(
 }
 
 class CroppingRegionDecoderFactory(
-    private val imageSource: BufferedSource,
     private val cropBorders: Rect,
 ) : DecoderFactory<ImageRegionDecoder> {
     override fun make(): ImageRegionDecoder {
-        return CroppingRegionDecoder(imageSource, cropBorders)
+        return CroppingRegionDecoder(cropBorders)
     }
 }

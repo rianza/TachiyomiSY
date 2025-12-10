@@ -285,10 +285,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 override fun onReady() {
                     setupZoom(config)
                     if (isVisibleOnScreen()) landscapeZoom(true)
-                    if (isWebtoon) {
-                        this@ReaderPageImageView.alpha = 0f
-                        this@ReaderPageImageView.animate().alpha(1f).setDuration(150).start()
-                    }
                     this@ReaderPageImageView.onImageLoaded()
                 }
 
@@ -304,39 +300,15 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
-
-
-                if (isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
-                    setImage(ImageSource.inputStream(data.inputStream()))
-                    isVisible = true
-                    return@apply
+                if (isWebtoon && config.cropBorders) {
+                    val cropBorders = ImageUtil.findCropBorders(data)
+                    if (cropBorders != null) {
+                        setRegionDecoderFactory(CroppingRegionDecoderFactory(cropBorders))
+                    }
                 }
-
-                ImageRequest.Builder(context)
-                    .data(data)
-                    .memoryCachePolicy(CachePolicy.DISABLED)
-                    .diskCachePolicy(CachePolicy.DISABLED)
-                    .target(
-                        onSuccess = { result ->
-                            val image = result as BitmapImage
-                            setImage(ImageSource.bitmap(image.bitmap))
-                            isVisible = true
-                        },
-                    )
-                    .listener(
-                        onError = { _, result ->
-                            onImageLoadError(result.throwable)
-                        },
-                    )
-                    .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
-                    .cropBorders(config.cropBorders)
-                    .customDecoder(true)
-                    .crossfade(if (isWebtoon) 150 else 0)
-                    .build()
-                    .let(context.imageLoader::enqueue)
-
+                setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                setImage(ImageSource.inputStream(data.inputStream()))
+                isVisible = true
             }
             else -> {
                 throw IllegalArgumentException("Not implemented for class ${data::class.simpleName}")
@@ -409,7 +381,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     onImageLoadError(result.throwable)
                 },
             )
-            .crossfade(if (isWebtoon) 150 else 0)
+            .crossfade(false)
             .build()
         context.imageLoader.enqueue(request)
     }
