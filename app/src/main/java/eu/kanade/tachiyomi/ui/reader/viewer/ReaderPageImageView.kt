@@ -303,7 +303,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 if (isWebtoon && config.cropBorders) {
                     val cropBorders = ImageUtil.findCropBorders(data)
                     if (cropBorders != null) {
-                        setRegionDecoderFactory(CroppingRegionDecoderFactory(cropBorders))
+                        setDecoderFactory(CroppingRegionDecoderFactory(cropBorders))
                     }
                 }
                 setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
