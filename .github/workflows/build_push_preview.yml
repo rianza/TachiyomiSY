@@ -30,9 +30,9 @@ jobs:
 
       - name: PING - Dispatch initiating repository event
         run: |
-          curl -X POST https://api.github.com/repos/jobobby04/TachiyomiSYPreview/dispatches \
+          curl -X POST https://api.github.com/repos/rianza/TachiyomiSYPreview/dispatches \
           -H 'Accept: application/vnd.github.everest-preview+json' \
-          -u ${{ secrets.ACCESS_TOKEN }} \
+          -u ${{ secrets.TOKEN }} \
           --data '{"event_type": "ping", "client_payload": { "repository": "'"$GITHUB_REPOSITORY"'" }}'
 
       - name: Run unit tests
