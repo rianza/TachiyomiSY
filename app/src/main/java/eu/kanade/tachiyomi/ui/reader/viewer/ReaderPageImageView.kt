@@ -286,6 +286,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 override fun onReady() {
                     setupZoom(config)
                     if (isVisibleOnScreen()) landscapeZoom(true)
+                    if (isWebtoon) {
+                        this@ReaderPageImageView.alpha = 0f
+                        this@ReaderPageImageView.animate().alpha(1f).setDuration(150).start()
+                    }
                     this@ReaderPageImageView.onImageLoaded()
                 }
 
@@ -301,7 +305,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
-                if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
+                if (isWebtoon || alwaysDecodeLongStripWithSSIV) {
                     setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
                     setImage(ImageSource.inputStream(data.inputStream()))
                     isVisible = true
@@ -328,7 +332,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     .precision(Precision.INEXACT)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
-                    .crossfade(false)
+                    .crossfade(if (isWebtoon) 150 else 0)
                     .build()
                     .let(context.imageLoader::enqueue)
             }
@@ -403,7 +407,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     onImageLoadError(result.throwable)
                 },
             )
-            .crossfade(false)
+            .crossfade(if (isWebtoon) 150 else 0)
             .build()
         context.imageLoader.enqueue(request)
     }
