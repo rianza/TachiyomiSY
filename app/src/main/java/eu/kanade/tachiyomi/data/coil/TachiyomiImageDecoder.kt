@@ -65,17 +65,32 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         var bitmap = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
 
-        check(bitmap != null) { "Failed to decode image" }
+        bitmap = requireNotNull(bitmap) { "Failed to decode image" }
 
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        val desiredConfig = options.bitmapConfig ?: Bitmap.Config.ARGB_8888
+        if (desiredConfig != Bitmap.Config.HARDWARE && bitmap.config != desiredConfig) {
+            try {
+                bitmap.copy(desiredConfig, false)?.let { convertedBitmap ->
+                    bitmap.recycle()
+                    bitmap = convertedBitmap
+                }
+            } catch (e: OutOfMemoryError) {
+                System.gc() 
+            }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             options.bitmapConfig == Bitmap.Config.HARDWARE &&
             ImageUtil.canUseHardwareBitmap(bitmap)
         ) {
-            val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
-            if (hwBitmap != null) {
-                bitmap.recycle()
-                bitmap = hwBitmap
+            try {
+                val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
+                if (hwBitmap != null) {
+                    bitmap.recycle()
+                    bitmap = hwBitmap
+                }
+            } catch (e: Throwable) {
+                // If the hardware bitmap fails (e.g. GPU RAM is full), continue using the software bitmap.
             }
         }
 
