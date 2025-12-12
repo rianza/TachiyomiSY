@@ -54,13 +54,38 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         val dstWidth = options.size.widthPx(options.scale) { srcWidth }
         val dstHeight = options.size.heightPx(options.scale) { srcHeight }
 
-        val sampleSize = DecodeUtils.calculateInSampleSize(
+        val baseSampleSize = DecodeUtils.calculateInSampleSize(
             srcWidth = srcWidth,
             srcHeight = srcHeight,
             dstWidth = dstWidth,
             dstHeight = dstHeight,
             scale = options.scale,
         )
+
+        var sampleSize = baseSampleSize
+
+        if (baseSampleSize > 1) {
+            val srcPixels = srcWidth.toLong() * srcHeight
+            val dstPixels = dstWidth.toLong() * dstHeight.coerceAtLeast(1)
+
+            val ratio = srcPixels.toDouble() / dstPixels.toDouble()
+
+            when {
+                // If the image is only +/- 2x larger than the target,
+                // don't downsample at all → sharp text.
+                ratio <= 2.5 -> {
+                    sampleSize = 1
+                }
+                // If it's 2.5–6x larger, don't be too aggressive.
+                // For example, if baseSampleSize is calculated as 4, reduce it to 2.
+                ratio <= 6.0 && baseSampleSize > 2 -> {
+                    sampleSize = 2
+                }
+                // Above that (super long webtoon / giant image),
+                // leave baseSampleSize as is for RAM & coolness.
+                else -> { /* use baseSampleSize */ }
+            }
+        }
 
         var bitmap = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
