@@ -62,10 +62,18 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
             scale = options.scale,
         )
 
-        var bitmap = decoder.decode(sampleSize = sampleSize)
+        val decoded = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
 
-        check(bitmap != null) { "Failed to decode image" }
+        var bitmap = requireNotNull(decoded) { "Failed to decode image" }
+
+        val desiredConfig = options.bitmapConfig
+        if (desiredConfig != Bitmap.Config.HARDWARE && bitmap.config != desiredConfig) {
+            bitmap.copy(desiredConfig, false)?.let { converted ->
+                bitmap.recycle()
+                bitmap = converted
+            }
+        }
 
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
