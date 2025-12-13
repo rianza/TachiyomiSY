@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,9 +48,14 @@ import androidx.core.util.Consumer
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import androidx.lifecycle.lifecycleScope
+import cafe.adriel.voyager.core.model.ScreenModelStore
+import cafe.adriel.voyager.core.registry.ScreenRegistry
+import cafe.adriel.voyager.core.saver.ScreenSaver
+import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.NavigatorDisposeBehavior
+import cafe.adriel.voyager.navigator.NavigatorSaver
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.analytics
@@ -98,11 +104,6 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import androidx.compose.runtime.saveable.rememberSaveable
-import cafe.adriel.voyager.core.model.ScreenModelStore
-import cafe.adriel.voyager.core.screen.Screen
-import cafe.adriel.voyager.core.saver.ScreenSaver
-import cafe.adriel.voyager.navigator.NavigatorSaver
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.core.migration.Migrator
@@ -115,7 +116,6 @@ import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.injectLazy
 import java.util.LinkedList
-import cafe.adriel.voyager.core.registry.ScreenRegistry
 
 class MainActivity : BaseActivity() {
 
@@ -233,87 +233,86 @@ class MainActivity : BaseActivity() {
                     // Set start screen
                     handleIntentAction(intent, navigator)
 
-                        // Reset Incognito Mode on relaunch
-                        preferences.incognitoMode().set(false)
+                    // Reset Incognito Mode on relaunch
+                    preferences.incognitoMode().set(false)
 
-                        // SY -->
-                        initWhenIdle {
-                            // Upload settings
-                            if (exhPreferences.enableExhentai().get() &&
-                                exhPreferences.exhShowSettingsUploadWarning().get()
-                            ) {
-                                runExhConfigureDialog = true
-                            }
-                            // Scheduler uploader job if required
-
-                            EHentaiUpdateWorker.scheduleBackground(this@MainActivity)
+                    // SY -->
+                    initWhenIdle {
+                        // Upload settings
+                        if (exhPreferences.enableExhentai().get() &&
+                            exhPreferences.exhShowSettingsUploadWarning().get()
+                        ) {
+                            runExhConfigureDialog = true
                         }
-                        // SY <--
+                        // Scheduler uploader job if required
+
+                        EHentaiUpdateWorker.scheduleBackground(this@MainActivity)
                     }
+                    // SY <--
                 }
-                LaunchedEffect(navigator.lastItem) {
-                    (navigator.lastItem as? BrowseSourceScreen)?.sourceId
-                        .let(getIncognitoState::subscribe)
-                        .collectLatest { incognito = it }
-                }
-
-                val scaffoldInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
-                Scaffold(
-                    topBar = {
-                        AppStateBanners(
-                            downloadedOnlyMode = downloadOnly,
-                            incognitoMode = incognito,
-                            indexing = indexing,
-                            modifier = Modifier.windowInsetsPadding(scaffoldInsets),
-                        )
-                    },
-                    contentWindowInsets = scaffoldInsets,
-                ) { contentPadding ->
-                    // Consume insets already used by app state banners
-                    Box {
-                        // Shows current screen
-                        DefaultNavigatorScreenTransition(
-                            navigator = navigator,
-                            modifier = Modifier
-                                .padding(contentPadding)
-                                .consumeWindowInsets(contentPadding),
-                        )
-
-                        // Draw navigation bar scrim when needed
-                        if (remember { isNavigationBarNeedsScrim() }) {
-                            Spacer(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .fillMaxWidth()
-                                    .windowInsetsBottomHeight(WindowInsets.navigationBars)
-                                    .alpha(0.8f)
-                                    .background(MaterialTheme.colorScheme.surfaceContainer),
-                            )
-                        }
-                    }
-                }
-
-                // Pop source-related screens when incognito mode is turned off
-                LaunchedEffect(Unit) {
-                    preferences.incognitoMode().changes()
-                        .drop(1)
-                        .filter { !it }
-                        .onEach {
-                            val currentScreen = navigator.lastItem
-                            if (currentScreen is BrowseSourceScreen ||
-                                (currentScreen is MangaScreen && currentScreen.fromSource)
-                            ) {
-                                navigator.popUntilRoot()
-                            }
-                        }
-                        .launchIn(this)
-                }
-
-                HandleOnNewIntent(context = context, navigator = navigator)
-
-                CheckForUpdates()
-                ShowOnboarding()
             }
+            LaunchedEffect(navigator.lastItem) {
+                (navigator.lastItem as? BrowseSourceScreen)?.sourceId
+                    .let(getIncognitoState::subscribe)
+                    .collectLatest { incognito = it }
+            }
+
+            val scaffoldInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
+            Scaffold(
+                topBar = {
+                    AppStateBanners(
+                        downloadedOnlyMode = downloadOnly,
+                        incognitoMode = incognito,
+                        indexing = indexing,
+                        modifier = Modifier.windowInsetsPadding(scaffoldInsets),
+                    )
+                },
+                contentWindowInsets = scaffoldInsets,
+            ) { contentPadding ->
+                // Consume insets already used by app state banners
+                Box {
+                    // Shows current screen
+                    DefaultNavigatorScreenTransition(
+                        navigator = navigator,
+                        modifier = Modifier
+                            .padding(contentPadding)
+                            .consumeWindowInsets(contentPadding),
+                    )
+
+                    // Draw navigation bar scrim when needed
+                    if (remember { isNavigationBarNeedsScrim() }) {
+                        Spacer(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .windowInsetsBottomHeight(WindowInsets.navigationBars)
+                                .alpha(0.8f)
+                                .background(MaterialTheme.colorScheme.surfaceContainer),
+                        )
+                    }
+                }
+            }
+
+            // Pop source-related screens when incognito mode is turned off
+            LaunchedEffect(Unit) {
+                preferences.incognitoMode().changes()
+                    .drop(1)
+                    .filter { !it }
+                    .onEach {
+                        val currentScreen = navigator.lastItem
+                        if (currentScreen is BrowseSourceScreen ||
+                            (currentScreen is MangaScreen && currentScreen.fromSource)
+                        ) {
+                            navigator.popUntilRoot()
+                        }
+                    }
+                    .launchIn(this)
+            }
+
+            HandleOnNewIntent(context = context, navigator = navigator)
+
+            CheckForUpdates()
+            ShowOnboarding()
 
             // SY -->
             if (hasDebugOverlay) {
