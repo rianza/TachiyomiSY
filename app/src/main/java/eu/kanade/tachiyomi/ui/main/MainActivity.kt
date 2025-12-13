@@ -98,6 +98,11 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import androidx.compose.runtime.saveable.rememberSaveable
+import cafe.adriel.voyager.core.model.ScreenModelStore
+import cafe.adriel.voyager.core.screen.Screen
+import cafe.adriel.voyager.core.saver.ScreenSaver
+import cafe.adriel.voyager.navigator.NavigatorSaver
 import kotlinx.coroutines.launch
 import logcat.LogPriority
 import mihon.core.migration.Migrator
@@ -110,6 +115,7 @@ import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.injectLazy
 import java.util.LinkedList
+import cafe.adriel.voyager.core.registry.ScreenRegistry
 
 class MainActivity : BaseActivity() {
 
@@ -205,16 +211,27 @@ class MainActivity : BaseActivity() {
                 )
             }
 
-            Navigator(
-                screen = HomeScreen,
-                disposeBehavior = NavigatorDisposeBehavior(disposeNestedNavigators = false, disposeSteps = true),
-            ) { navigator ->
-                LaunchedEffect(navigator) {
-                    this@MainActivity.navigator = navigator
-
-                    if (isLaunch) {
-                        // Set start screen
-                        handleIntentAction(intent, navigator)
+            val navigator = rememberSaveable(
+                saver = NavigatorSaver(
+                    disposeBehavior = NavigatorDisposeBehavior(
+                        disposeNestedNavigators = false,
+                        disposeSteps = true,
+                    ),
+                ),
+            ) {
+                Navigator(
+                    screen = HomeScreen,
+                    disposeBehavior = NavigatorDisposeBehavior(
+                        disposeNestedNavigators = false,
+                        disposeSteps = true,
+                    ),
+                )
+            }
+            LaunchedEffect(navigator) {
+                this@MainActivity.navigator = navigator
+                if (isLaunch) {
+                    // Set start screen
+                    handleIntentAction(intent, navigator)
 
                         // Reset Incognito Mode on relaunch
                         preferences.incognitoMode().set(false)
@@ -344,7 +361,7 @@ class MainActivity : BaseActivity() {
 
     override fun onProvideAssistContent(outContent: AssistContent) {
         super.onProvideAssistContent(outContent)
-        when (val screen = navigator?.lastItem) {
+        when (val screen = navigator.lastItem) {
             is AssistContentScreen -> {
                 screen.onProvideAssistUrl()?.let { outContent.webUri = it.toUri() }
             }
@@ -545,3 +562,39 @@ class MainActivity : BaseActivity() {
 private const val SPLASH_MIN_DURATION = 500 // ms
 private const val SPLASH_MAX_DURATION = 5000 // ms
 private const val SPLASH_EXIT_ANIM_DURATION = 400L // ms
+
+private fun NavigatorSaver(
+    disposeBehavior: NavigatorDisposeBehavior,
+): androidx.compose.runtime.saveable.Saver<Navigator, *> = androidx.compose.runtime.saveable.Saver(
+    save = { navigator ->
+        val screenSavers = navigator.items.map { screen ->
+            val screenModelStore = ScreenModelStore.get(screen)
+            val saver = screen as? ScreenSaver
+            val savedState = with(saver ?: ScreenSaver) {
+                screen.saveState()
+            }
+            mapOf(
+                "key" to screen.key,
+                "savedState" to savedState,
+                "screenModels" to screenModelStore.save(),
+            )
+        }
+        screenSavers
+    },
+    restore = { savedState ->
+        val screens = savedState.map { savedScreen ->
+            val screen = ScreenRegistry.get(savedScreen["key"] as String) ?: return@map null
+            val screenModelStore = ScreenModelStore.get(screen)
+            screenModelStore.restore(savedScreen["screenModels"] as Map<String, Any>)
+            val saver = screen as? ScreenSaver
+            with(saver ?: ScreenSaver) {
+                screen.restoreState(savedScreen["savedState"] as Map<String, Any?>)
+            }
+            screen
+        }.filterNotNull()
+        Navigator(
+            screens = screens,
+            disposeBehavior = disposeBehavior,
+        )
+    },
+)
