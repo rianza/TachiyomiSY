@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import eu.kanade.presentation.util.ParcelableScreen
+import kotlinx.parcelize.Parcelize
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
@@ -23,9 +25,10 @@ import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import tachiyomi.presentation.core.components.TwoPanelBox
 
-class SettingsScreen(
+@Parcelize
+data class SettingsScreen(
     private val destination: Int? = null,
-) : Screen() {
+) : ParcelableScreen {
 
     constructor(destination: Destination) : this(destination.id)
 

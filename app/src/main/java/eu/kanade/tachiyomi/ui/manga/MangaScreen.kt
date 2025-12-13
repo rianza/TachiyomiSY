@@ -19,6 +19,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.core.net.toUri
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import eu.kanade.presentation.util.ParcelableScreen
+import kotlinx.parcelize.Parcelize
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -87,11 +89,12 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-class MangaScreen(
+@Parcelize
+data class MangaScreen(
     private val mangaId: Long,
     val fromSource: Boolean = false,
     private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
-) : Screen(), AssistContentScreen {
+) : ParcelableScreen, AssistContentScreen {
 
     private var assistUrl: String? = null
 

@@ -1,6 +1,9 @@
 package eu.kanade.tachiyomi.ui.home
 
 import androidx.activity.compose.BackHandler
+import cafe.adriel.voyager.core.screen.Screen
+import kotlinx.parcelize.Parcelize
+import eu.kanade.presentation.util.ParcelableScreen
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -63,7 +66,8 @@ import tachiyomi.presentation.core.i18n.pluralStringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-object HomeScreen : Screen() {
+@Parcelize
+data object HomeScreen : ParcelableScreen {
 
     private val librarySearchEvent = Channel<String>()
     private val openTabEvent = Channel<Tab>()

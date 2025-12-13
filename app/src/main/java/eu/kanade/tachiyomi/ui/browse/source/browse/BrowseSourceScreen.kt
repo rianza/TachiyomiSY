@@ -45,7 +45,8 @@ import eu.kanade.presentation.browse.components.SavedSearchDeleteDialog
 import eu.kanade.presentation.category.components.ChangeCategoryDialog
 import eu.kanade.presentation.manga.DuplicateMangaDialog
 import eu.kanade.presentation.util.AssistContentScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
+import kotlinx.parcelize.Parcelize
 import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.ui.browse.extension.details.SourcePreferencesScreen
@@ -80,7 +81,7 @@ data class BrowseSourceScreen(
     private val savedSearch: Long? = null,
     private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
     // SY <--
-) : Screen(), AssistContentScreen {
+) : ParcelableScreen, AssistContentScreen {
 
     private var assistUrl: String? = null
 
