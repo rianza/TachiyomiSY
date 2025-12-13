@@ -21,7 +21,7 @@ import eu.kanade.core.preference.asState
 import eu.kanade.domain.ui.UiPreferences
 import eu.kanade.presentation.updates.UpdateScreen
 import eu.kanade.presentation.updates.UpdatesDeleteConfirmationDialog
-import eu.kanade.presentation.util.Tab
+import eu.kanade.presentation.util.ParcelableTab
 import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
 import eu.kanade.tachiyomi.ui.home.HomeScreen
@@ -30,6 +30,7 @@ import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.updates.UpdatesScreenModel.Event
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.parcelize.Parcelize
 import mihon.feature.upcoming.UpcomingScreen
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
@@ -37,7 +38,8 @@ import tachiyomi.presentation.core.i18n.stringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-data object UpdatesTab : Tab {
+@Parcelize
+data object UpdatesTab : ParcelableTab {
 
     override val options: TabOptions
         @Composable
