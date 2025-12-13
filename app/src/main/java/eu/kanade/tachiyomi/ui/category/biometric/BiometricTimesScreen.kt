@@ -1,3 +1,4 @@
+
 package eu.kanade.tachiyomi.ui.category.biometric
 
 import androidx.compose.runtime.Composable

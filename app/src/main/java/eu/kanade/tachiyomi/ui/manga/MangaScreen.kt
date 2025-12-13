@@ -38,7 +38,7 @@ import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.manga.components.ScanlatorFilterDialog
 import eu.kanade.presentation.manga.components.SetIntervalDialog
 import eu.kanade.presentation.util.AssistContentScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.isLocalOrStub
@@ -70,6 +70,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 import logcat.LogPriority
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
@@ -87,11 +88,12 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-class MangaScreen(
+@Parcelize
+data class MangaScreen(
     private val mangaId: Long,
     val fromSource: Boolean = false,
-    private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
-) : Screen(), AssistContentScreen {
+    private val mergeWithMangaId: Long? = null,
+) : ParcelableScreen, AssistContentScreen {
 
     private var assistUrl: String? = null
 
@@ -110,7 +112,7 @@ class MangaScreen(
         val scope = rememberCoroutineScope()
         val lifecycleOwner = LocalLifecycleOwner.current
         val screenModel = rememberScreenModel {
-            MangaScreenModel(context, lifecycleOwner.lifecycle, mangaId, fromSource, smartSearchConfig != null)
+            MangaScreenModel(context, lifecycleOwner.lifecycle, mangaId, fromSource)
         }
 
         val state by screenModel.state.collectAsStateWithLifecycle()
@@ -207,9 +209,9 @@ class MangaScreen(
             },
             previewsRowCount = successState.previewsRowCount,
             onMigrateClicked = {
-                navigator.push(MigrationConfigScreen(successState.manga.id))
+                navigator.push(SourcesScreen(SmartSearchConfig(successState.manga.title)))
             }.takeIf { successState.manga.favorite },
-            onEditNotesClicked = { navigator.push(MangaNotesScreen(manga = successState.manga)) },
+            onEditNotesClicked = { navigator.push(MangaNotesScreen(successState.manga.id)) },
             // SY -->
             onMetadataViewerClicked = { openMetadataViewer(navigator, successState.manga) },
             onEditInfoClicked = screenModel::showEditMangaInfoDialog,
@@ -217,10 +219,27 @@ class MangaScreen(
                 openRecommends(navigator, screenModel.source?.getMainSource(), successState.manga)
             },
             onMergedSettingsClicked = screenModel::showEditMergedSettingsDialog,
-            onMergeClicked = { openSmartSearch(navigator, successState.manga) },
-            onMergeWithAnotherClicked = {
-                mergeWithAnother(navigator, context, successState.manga, screenModel::smartSearchMerge)
+            onMergeClicked = {
+                val smartSearchConfig = SourcesScreen.SmartSearchConfig(successState.manga.title, successState.manga.id)
+                navigator.push(SourcesScreen(smartSearchConfig))
             },
+            onMergeWithAnotherClicked = {
+                scope.launch {
+                    try {
+                        val mergedManga = withNonCancellableContext {
+                            screenModel.smartSearchMerge(successState.manga, mergeWithMangaId!!)
+                        }
+
+                        navigator.popUntil { it is SourcesScreen }
+                        navigator.pop()
+                        navigator.replace(MangaScreen(mergedManga.id, true))
+                        context.toast(SYMR.strings.entry_merged)
+                    } catch (e: Exception) {
+                        if (e is CancellationException) throw e
+                        context.toast(context.stringResource(SYMR.strings.failed_merge, e.message.orEmpty()))
+                    }
+                }
+            }.takeIf { mergeWithMangaId != null },
             onOpenPagePreview = {
                 openPagePreview(context, successState.chapters.minByOrNull { it.chapter.sourceOrder }?.chapter, it)
             },
@@ -510,38 +529,6 @@ class MangaScreen(
     }
     // SY <--
 
-    // EXH -->
-    private fun openSmartSearch(navigator: Navigator, manga: Manga) {
-        val smartSearchConfig = SourcesScreen.SmartSearchConfig(manga.title, manga.id)
-
-        navigator.push(SourcesScreen(smartSearchConfig))
-    }
-
-    @OptIn(DelicateCoroutinesApi::class)
-    private fun mergeWithAnother(
-        navigator: Navigator,
-        context: Context,
-        manga: Manga,
-        smartSearchMerge: suspend (Manga, Long) -> Manga,
-    ) {
-        launchUI {
-            try {
-                val mergedManga = withNonCancellableContext {
-                    smartSearchMerge(manga, smartSearchConfig?.origMangaId!!)
-                }
-
-                navigator.popUntil { it is SourcesScreen }
-                navigator.pop()
-                navigator replace MangaScreen(mergedManga.id, true)
-                context.toast(SYMR.strings.entry_merged)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-
-                context.toast(context.stringResource(SYMR.strings.failed_merge, e.message.orEmpty()))
-            }
-        }
-    }
-    // EXH <--
 
     // AZ -->
     private fun openRecommends(navigator: Navigator, source: Source?, manga: Manga) {
