@@ -154,6 +154,15 @@ class ReaderViewModel @JvmOverloads constructor(
         get() = state.value.manga
 
     /**
+     * The manga id of the currently loaded manga. Used to restore from process kill.
+     */
+    private var mangaId = savedState.get<Long>("manga_id") ?: -1L
+        set(value) {
+            savedState["manga_id"] = value
+            field = value
+        }
+
+    /**
      * The chapter id of the currently loaded chapter. Used to restore from process kill.
      */
     private var chapterId = savedState.get<Long>("chapter_id") ?: -1L
@@ -192,10 +201,11 @@ class ReaderViewModel @JvmOverloads constructor(
      * Chapter list for the active manga. It's retrieved lazily and should be accessed for the first
      * time in a background thread to avoid blocking the UI.
      */
-    private val chapterList by lazy {
-        val manga = manga!!
+    private lateinit var chapterList: List<ReaderChapter>
+
+    private suspend fun getChapterList(manga: Manga): List<ReaderChapter> {
         // SY -->
-        val (chapters, mangaMap) = runBlocking {
+        val (chapters, mangaMap) =
             if (manga.source == MERGED_SOURCE_ID) {
                 getMergedChaptersByMangaId.await(manga.id, applyScanlatorFilter = true) to
                     getMergedMangaById.await(manga.id)
@@ -203,7 +213,6 @@ class ReaderViewModel @JvmOverloads constructor(
             } else {
                 getChaptersByMangaId.await(manga.id, applyScanlatorFilter = true) to null
             }
-        }
         fun isChapterDownloaded(chapter: Chapter): Boolean {
             val chapterManga = mangaMap?.get(chapter.mangaId) ?: manga
             return downloadManager.isChapterDownloaded(
@@ -253,7 +262,7 @@ class ReaderViewModel @JvmOverloads constructor(
             else -> chapters
         }
 
-        chaptersForReader
+        return chaptersForReader
             .sortedWith(getChapterSort(manga, sortDescending = false))
             .run {
                 if (readerPreferences.skipDupe().get()) {
@@ -277,13 +286,49 @@ class ReaderViewModel @JvmOverloads constructor(
     private val downloadAheadAmount = downloadPreferences.autoDownloadWhileReading().get()
 
     init {
+        if (mangaId != -1L) {
+            viewModelScope.launchIO {
+                val manga = getManga.await(mangaId)
+                if (manga != null) {
+                    val source = sourceManager.getOrStub(manga.source)
+                    val mergedReferences = if (source is MergedSource) {
+                        getMergedReferencesById.await(manga.id)
+                    } else {
+                        emptyList()
+                    }
+                    val mergedManga = if (source is MergedSource) {
+                        getMergedMangaById.await(manga.id)
+                            .associateBy { it.id }
+                    } else {
+                        emptyMap()
+                    }
+                    val context = Injekt.get<Application>()
+                    loader = ChapterLoader(
+                        context = context,
+                        downloadManager = downloadManager,
+                        downloadProvider = downloadProvider,
+                        manga = manga,
+                        source = source,
+                        sourceManager = sourceManager,
+                        readerPrefs = readerPreferences,
+                        mergedReferences = mergedReferences,
+                        mergedManga = mergedManga,
+                    )
+                    mutableState.update {
+                        it.copy(manga = manga)
+                    }
+                    chapterList = getChapterList(manga)
+                    loadChapter(loader!!, chapterList.first { chapterId == it.chapter.id })
+                }
+            }
+        }
         // To save state
         state.map { it.viewerChapters?.currChapter }
             .distinctUntilChanged()
             .filterNotNull()
             // SY -->
             .drop(1) // allow the loader to set the first page and chapter id
-            // SY <-
+            // SY <--
             .onEach { currentChapter ->
                 if (chapterPageIndex >= 0) {
                     // Restore from SavedState
@@ -336,7 +381,7 @@ class ReaderViewModel @JvmOverloads constructor(
      * Whether this presenter is initialized yet.
      */
     fun needsInit(): Boolean {
-        return manga == null
+        return mangaId == -1L
     }
 
     /**
@@ -345,6 +390,7 @@ class ReaderViewModel @JvmOverloads constructor(
      */
     suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
         if (!needsInit()) return Result.success(true)
+        this.mangaId = mangaId
         return withIOContext {
             try {
                 val manga = getManga.await(mangaId)
@@ -406,6 +452,8 @@ class ReaderViewModel @JvmOverloads constructor(
                         mergedReferences = mergedReferences,
                         mergedManga = mergedManga, /* SY <-- */
                     )
+
+                    chapterList = getChapterList(manga)
 
                     loadChapter(
                         loader!!,
