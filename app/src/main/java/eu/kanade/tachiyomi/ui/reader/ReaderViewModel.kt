@@ -154,6 +154,15 @@ class ReaderViewModel @JvmOverloads constructor(
         get() = state.value.manga
 
     /**
+     * The manga id of the currently loaded manga. Used to restore from process kill.
+     */
+    private var mangaId = savedState.get<Long>("manga_id") ?: -1L
+        set(value) {
+            savedState["manga_id"] = value
+            field = value
+        }
+
+    /**
      * The chapter id of the currently loaded chapter. Used to restore from process kill.
      */
     private var chapterId = savedState.get<Long>("chapter_id") ?: -1L
@@ -277,6 +286,11 @@ class ReaderViewModel @JvmOverloads constructor(
     private val downloadAheadAmount = downloadPreferences.autoDownloadWhileReading().get()
 
     init {
+        if (mangaId != -1L && needsInit()) {
+            viewModelScope.launchIO {
+                init(mangaId, chapterId, null)
+            }
+        }
         // To save state
         state.map { it.viewerChapters?.currChapter }
             .distinctUntilChanged()
@@ -345,6 +359,7 @@ class ReaderViewModel @JvmOverloads constructor(
      */
     suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
         if (!needsInit()) return Result.success(true)
+        this.mangaId = mangaId
         return withIOContext {
             try {
                 val manga = getManga.await(mangaId)
