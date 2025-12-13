@@ -10,17 +10,21 @@ import androidx.compose.ui.platform.LocalContext
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import eu.kanade.tachiyomi.ui.browse.migration.search.MigrateSearchScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.parcelize.Parcelize
 import mihon.feature.migration.list.components.MigrationExitDialog
 import mihon.feature.migration.list.components.MigrationMangaDialog
 import mihon.feature.migration.list.components.MigrationProgressDialog
 import tachiyomi.i18n.MR
 
-class MigrationListScreen(private val mangaIds: Collection<Long>, private val extraSearchQuery: String?) : Screen() {
+@Parcelize
+data class MigrationListScreen(private val mangaIds: List<Long>, private val extraSearchQuery: String?) :
+    ParcelableScreen() {
 
+    @Transient
     private var matchOverride: Pair<Long, Long>? = null
 
     fun addMatchOverride(current: Long, target: Long) {

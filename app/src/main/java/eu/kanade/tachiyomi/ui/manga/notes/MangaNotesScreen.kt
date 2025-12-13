@@ -10,52 +10,77 @@ import cafe.adriel.voyager.core.model.screenModelScope
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.manga.MangaNotesScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 import tachiyomi.core.common.util.lang.launchNonCancellable
+import tachiyomi.domain.manga.interactor.GetManga
 import tachiyomi.domain.manga.interactor.UpdateMangaNotes
 import tachiyomi.domain.manga.model.Manga
+import tachiyomi.presentation.core.screens.LoadingScreen
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-class MangaNotesScreen(
-    private val manga: Manga,
-) : Screen() {
+@Parcelize
+data class MangaNotesScreen(
+    private val mangaId: Long,
+) : ParcelableScreen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
 
-        val screenModel = rememberScreenModel { Model(manga) }
+        val screenModel = rememberScreenModel { Model(mangaId) }
         val state by screenModel.state.collectAsState()
 
-        MangaNotesScreen(
-            state = state,
-            navigateUp = navigator::pop,
-            onUpdate = screenModel::updateNotes,
-        )
+        if (state is State.Success) {
+            MangaNotesScreen(
+                state = state as State.Success,
+                navigateUp = navigator::pop,
+                onUpdate = screenModel::updateNotes,
+            )
+        } else {
+            LoadingScreen()
+        }
     }
 
     private class Model(
-        private val manga: Manga,
+        private val mangaId: Long,
+        private val getManga: GetManga = Injekt.get(),
         private val updateMangaNotes: UpdateMangaNotes = Injekt.get(),
-    ) : StateScreenModel<State>(State(manga, manga.notes)) {
+    ) : StateScreenModel<State>(State.Loading) {
+
+        init {
+            screenModelScope.launch {
+                val manga = getManga.await(mangaId)
+                if (manga != null) {
+                    mutableState.update {
+                        State.Success(manga = manga, notes = manga.notes)
+                    }
+                }
+            }
+        }
 
         fun updateNotes(content: String) {
-            if (content == state.value.notes) return
+            val currentState = state.value
+            if (currentState !is State.Success || content == currentState.notes) return
 
             mutableState.update {
-                it.copy(notes = content)
+                (it as State.Success).copy(notes = content)
             }
 
             screenModelScope.launchNonCancellable {
-                updateMangaNotes(manga.id, content)
+                updateMangaNotes(mangaId, content)
             }
         }
     }
 
     @Immutable
-    data class State(
-        val manga: Manga,
-        val notes: String,
-    )
+    sealed interface State {
+        data object Loading : State
+        data class Success(
+            val manga: Manga,
+            val notes: String,
+        ) : State
+    }
 }

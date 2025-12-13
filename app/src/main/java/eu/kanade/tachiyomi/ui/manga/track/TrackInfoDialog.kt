@@ -53,13 +53,13 @@ import eu.kanade.presentation.track.TrackInfoDialogHome
 import eu.kanade.presentation.track.TrackScoreSelector
 import eu.kanade.presentation.track.TrackStatusSelector
 import eu.kanade.presentation.track.TrackerSearch
-import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.data.track.DeletableTracker
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.Tracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.data.track.model.TrackSearch
 import eu.kanade.tachiyomi.source.online.MetadataSource
+import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import eu.kanade.tachiyomi.util.lang.convertEpochMillisZone
 import eu.kanade.tachiyomi.util.lang.toLocalDate
 import eu.kanade.tachiyomi.util.system.copyToClipboard
@@ -74,6 +74,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
+import kotlinx.parcelize.RawValue
 import logcat.LogPriority
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.core.common.util.lang.launchNonCancellable
@@ -97,11 +99,12 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
 
+@Parcelize
 data class TrackInfoDialogHomeScreen(
     private val mangaId: Long,
     private val mangaTitle: String,
     private val sourceId: Long,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
@@ -377,10 +380,11 @@ data class TrackInfoDialogHomeScreen(
     }
 }
 
+@Parcelize
 private data class TrackStatusSelectorScreen(
-    private val track: Track,
+    private val track: @RawValue Track,
     private val serviceId: Long,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
@@ -430,10 +434,11 @@ private data class TrackStatusSelectorScreen(
     }
 }
 
+@Parcelize
 private data class TrackChapterSelectorScreen(
-    private val track: Track,
+    private val track: @RawValue Track,
     private val serviceId: Long,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
@@ -489,10 +494,11 @@ private data class TrackChapterSelectorScreen(
     }
 }
 
+@Parcelize
 private data class TrackScoreSelectorScreen(
-    private val track: Track,
+    private val track: @RawValue Track,
     private val serviceId: Long,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
@@ -543,11 +549,12 @@ private data class TrackScoreSelectorScreen(
     }
 }
 
+@Parcelize
 private data class TrackDateSelectorScreen(
-    private val track: Track,
+    private val track: @RawValue Track,
     private val serviceId: Long,
     private val start: Boolean,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Transient
     private val selectableDates = object : SelectableDates {
@@ -663,11 +670,12 @@ private data class TrackDateSelectorScreen(
     }
 }
 
+@Parcelize
 private data class TrackDateRemoverScreen(
-    private val track: Track,
+    private val track: @RawValue Track,
     private val serviceId: Long,
     private val start: Boolean,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
@@ -748,12 +756,13 @@ private data class TrackDateRemoverScreen(
     }
 }
 
+@Parcelize
 data class TrackerSearchScreen(
     private val mangaId: Long,
     private val initialQuery: String,
     private val currentUrl: String?,
     private val serviceId: Long,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
@@ -841,11 +850,12 @@ data class TrackerSearchScreen(
     }
 }
 
+@Parcelize
 private data class TrackerRemoveScreen(
     private val mangaId: Long,
-    private val track: Track,
+    private val track: @RawValue Track,
     private val serviceId: Long,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {

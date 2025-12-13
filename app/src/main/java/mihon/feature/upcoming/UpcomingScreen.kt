@@ -6,10 +6,12 @@ import androidx.compose.runtime.getValue
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import kotlinx.parcelize.Parcelize
 
-class UpcomingScreen : Screen() {
+@Parcelize
+data object UpcomingScreen : ParcelableScreen() {
 
     @Composable
     override fun Content() {

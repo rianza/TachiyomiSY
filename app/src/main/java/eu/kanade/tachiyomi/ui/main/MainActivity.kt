@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -47,10 +48,11 @@ import androidx.core.util.Consumer
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import androidx.lifecycle.lifecycleScope
-import cafe.adriel.voyager.navigator.LocalNavigator
+import cafe.adriel.voyager.core.lifecycle.LocalNavigatorSaver
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.NavigatorDisposeBehavior
 import cafe.adriel.voyager.navigator.currentOrThrow
+import cafe.adriel.voyager.navigator.parcelableNavigatorSaver
 import com.google.firebase.Firebase
 import com.google.firebase.analytics.analytics
 import eu.kanade.domain.base.BasePreferences
@@ -205,14 +207,15 @@ class MainActivity : BaseActivity() {
                 )
             }
 
-            Navigator(
-                screen = HomeScreen,
-                disposeBehavior = NavigatorDisposeBehavior(disposeNestedNavigators = false, disposeSteps = true),
-            ) { navigator ->
-                LaunchedEffect(navigator) {
-                    this@MainActivity.navigator = navigator
+            CompositionLocalProvider(LocalNavigatorSaver provides parcelableNavigatorSaver(HomeScreen)) {
+                Navigator(
+                    screen = HomeScreen,
+                    disposeBehavior = NavigatorDisposeBehavior(disposeNestedNavigators = false, disposeSteps = true),
+                ) { navigator ->
+                    LaunchedEffect(navigator) {
+                        this@MainActivity.navigator = navigator
 
-                    if (isLaunch) {
+                        if (isLaunch) {
                         // Set start screen
                         handleIntentAction(intent, navigator)
 
@@ -297,6 +300,7 @@ class MainActivity : BaseActivity() {
                 CheckForUpdates()
                 ShowOnboarding()
             }
+        }
 
             // SY -->
             if (hasDebugOverlay) {

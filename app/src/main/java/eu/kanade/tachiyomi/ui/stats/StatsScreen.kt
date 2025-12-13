@@ -10,15 +10,17 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.more.stats.StatsScreenContent
 import eu.kanade.presentation.more.stats.StatsScreenState
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.parcelize.Parcelize
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
 
-class StatsScreen : Screen() {
+@Parcelize
+data object StatsScreen : ParcelableScreen() {
 
     @Composable
     override fun Content() {

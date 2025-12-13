@@ -19,13 +19,15 @@ import eu.kanade.presentation.more.settings.screen.SettingsTrackingScreen
 import eu.kanade.presentation.more.settings.screen.about.AboutScreen
 import eu.kanade.presentation.util.DefaultNavigatorScreenTransition
 import eu.kanade.presentation.util.LocalBackPress
-import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
+import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.components.TwoPanelBox
 
-class SettingsScreen(
+@Parcelize
+data class SettingsScreen(
     private val destination: Int? = null,
-) : Screen() {
+) : ParcelableScreen() {
 
     constructor(destination: Destination) : this(destination.id)
 
