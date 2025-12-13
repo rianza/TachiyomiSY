@@ -5,21 +5,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.util.fastMap
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
-import eu.kanade.presentation.category.SourceCategoryScreen
+import eu.kanade.presentation.category.CategoryScreen
 import eu.kanade.presentation.category.components.CategoryCreateDialog
 import eu.kanade.presentation.category.components.CategoryDeleteDialog
 import eu.kanade.presentation.category.components.CategoryRenameDialog
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.collectLatest
-import tachiyomi.i18n.MR
-import tachiyomi.presentation.core.i18n.stringResource
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.screens.LoadingScreen
 
-class SourceCategoryScreen : Screen() {
+@Parcelize
+data object SourceCategoryScreen : ParcelableScreen {
 
     @Composable
     override fun Content() {
@@ -36,11 +38,12 @@ class SourceCategoryScreen : Screen() {
 
         val successState = state as SourceCategoryScreenState.Success
 
-        SourceCategoryScreen(
+        CategoryScreen(
             state = successState,
             onClickCreate = { screenModel.showDialog(SourceCategoryDialog.Create) },
             onClickRename = { screenModel.showDialog(SourceCategoryDialog.Rename(it)) },
             onClickDelete = { screenModel.showDialog(SourceCategoryDialog.Delete(it)) },
+            onChangeOrder = screenModel::changeOrder,
             navigateUp = navigator::pop,
         )
 
@@ -49,31 +52,23 @@ class SourceCategoryScreen : Screen() {
             SourceCategoryDialog.Create -> {
                 CategoryCreateDialog(
                     onDismissRequest = screenModel::dismissDialog,
-                    onCreate = { screenModel.createCategory(it) },
-                    // SY -->
-                    categories = successState.categories,
-                    title = stringResource(MR.strings.action_add_category),
-                    // SY <--
+                    onCreate = screenModel::createCategory,
+                    categories = successState.categories.fastMap { it.name }.toImmutableList(),
                 )
             }
             is SourceCategoryDialog.Rename -> {
                 CategoryRenameDialog(
                     onDismissRequest = screenModel::dismissDialog,
                     onRename = { screenModel.renameCategory(dialog.category, it) },
-                    // SY -->
-                    categories = successState.categories,
-                    category = dialog.category,
-                    // SY <--
+                    categories = successState.categories.fastMap { it.name }.toImmutableList(),
+                    category = dialog.category.name,
                 )
             }
             is SourceCategoryDialog.Delete -> {
                 CategoryDeleteDialog(
                     onDismissRequest = screenModel::dismissDialog,
-                    onDelete = { screenModel.deleteCategory(dialog.category) },
-                    // SY -->
-                    title = stringResource(MR.strings.delete_category),
-                    text = stringResource(MR.strings.delete_category_confirmation, dialog.category),
-                    // SY <--
+                    onDelete = { screenModel.deleteCategory(dialog.category.id) },
+                    category = dialog.category.name,
                 )
             }
         }

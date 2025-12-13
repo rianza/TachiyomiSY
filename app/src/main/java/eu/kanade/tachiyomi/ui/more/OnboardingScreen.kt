@@ -10,14 +10,16 @@ import eu.kanade.domain.base.BasePreferences
 import eu.kanade.presentation.more.onboarding.OnboardingScreen
 import eu.kanade.presentation.more.settings.screen.SearchableSettings
 import eu.kanade.presentation.more.settings.screen.SettingsDataScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.tachiyomi.ui.setting.SettingsScreen
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-class OnboardingScreen : Screen() {
+@Parcelize
+data object OnboardingScreen : ParcelableScreen {
 
     @Composable
     override fun Content() {

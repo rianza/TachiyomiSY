@@ -1,7 +1,6 @@
 package eu.kanade.tachiyomi.ui.more
 
 import androidx.compose.runtime.Composable
-import cafe.adriel.voyager.core.screen.Screen
 import eu.kanade.presentation.more.NewUpdateScreen
 import eu.kanade.presentation.util.ParcelableScreen
 import kotlinx.parcelize.Parcelize

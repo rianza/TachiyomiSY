@@ -5,19 +5,24 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.util.fastMap
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import eu.kanade.presentation.category.CategoryScreen
 import eu.kanade.presentation.category.components.CategoryCreateDialog
 import eu.kanade.presentation.category.components.CategoryDeleteDialog
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.category.components.CategoryRenameDialog
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.collectLatest
-import tachiyomi.i18n.sy.SYMR
-import tachiyomi.presentation.core.i18n.stringResource
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.screens.LoadingScreen
 
-class SortTagScreen : Screen() {
+@Parcelize
+data object SortTagScreen : ParcelableScreen {
+
     @Composable
     override fun Content() {
         val context = LocalContext.current
@@ -33,12 +38,12 @@ class SortTagScreen : Screen() {
 
         val successState = state as SortTagScreenState.Success
 
-        eu.kanade.presentation.category.SortTagScreen(
+        CategoryScreen(
             state = successState,
             onClickCreate = { screenModel.showDialog(SortTagDialog.Create) },
+            onClickRename = { screenModel.showDialog(SortTagDialog.Rename(it)) },
             onClickDelete = { screenModel.showDialog(SortTagDialog.Delete(it)) },
-            onClickMoveUp = screenModel::moveUp,
-            onClickMoveDown = screenModel::moveDown,
+            onChangeOrder = screenModel::changeOrder,
             navigateUp = navigator::pop,
         )
 
@@ -47,19 +52,23 @@ class SortTagScreen : Screen() {
             SortTagDialog.Create -> {
                 CategoryCreateDialog(
                     onDismissRequest = screenModel::dismissDialog,
-                    onCreate = { screenModel.createTag(it) },
-                    categories = successState.tags,
-                    title = stringResource(SYMR.strings.add_tag),
-                    extraMessage = stringResource(SYMR.strings.action_add_tags_message),
-                    alreadyExistsError = SYMR.strings.error_tag_exists,
+                    onCreate = screenModel::createCategory,
+                    categories = successState.categories.fastMap { it.name }.toImmutableList(),
+                )
+            }
+            is SortTagDialog.Rename -> {
+                CategoryRenameDialog(
+                    onDismissRequest = screenModel::dismissDialog,
+                    onRename = { screenModel.renameCategory(dialog.category, it) },
+                    categories = successState.categories.fastMap { it.name }.toImmutableList(),
+                    category = dialog.category.name,
                 )
             }
             is SortTagDialog.Delete -> {
                 CategoryDeleteDialog(
                     onDismissRequest = screenModel::dismissDialog,
-                    onDelete = { screenModel.delete(dialog.tag) },
-                    title = stringResource(SYMR.strings.delete_tag),
-                    text = stringResource(SYMR.strings.delete_tag_confirmation, dialog.tag),
+                    onDelete = { screenModel.deleteCategory(dialog.category.id) },
+                    category = dialog.category.name,
                 )
             }
         }

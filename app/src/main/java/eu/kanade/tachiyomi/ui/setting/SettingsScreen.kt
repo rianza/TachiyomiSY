@@ -20,7 +20,6 @@ import eu.kanade.presentation.more.settings.screen.about.AboutScreen
 import eu.kanade.presentation.util.DefaultNavigatorScreenTransition
 import eu.kanade.presentation.util.LocalBackPress
 import eu.kanade.presentation.util.ParcelableScreen
-import eu.kanade.presentation.util.Screen
 import eu.kanade.presentation.util.isTabletUi
 import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.components.TwoPanelBox
