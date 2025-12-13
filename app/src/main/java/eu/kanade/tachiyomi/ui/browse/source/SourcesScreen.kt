@@ -1,18 +1,21 @@
 package eu.kanade.tachiyomi.ui.browse.source
 
+import android.os.Parcelable
 import androidx.compose.runtime.Composable
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.BrowseTabWrapper
-import eu.kanade.presentation.util.Screen
-import java.io.Serializable
+import eu.kanade.presentation.util.ParcelableScreen
+import kotlinx.parcelize.Parcelize
 
-class SourcesScreen(private val smartSearchConfig: SmartSearchConfig?) : Screen() {
+@Parcelize
+data class SourcesScreen(val smartSearchConfig: SmartSearchConfig?) : ParcelableScreen() {
     @Composable
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
         BrowseTabWrapper(sourcesTab(smartSearchConfig), onBackPressed = navigator::pop)
     }
 
-    data class SmartSearchConfig(val origTitle: String, val origMangaId: Long? = null) : Serializable
+    @Parcelize
+    data class SmartSearchConfig(val origTitle: String, val origMangaId: Long? = null) : Parcelable
 }

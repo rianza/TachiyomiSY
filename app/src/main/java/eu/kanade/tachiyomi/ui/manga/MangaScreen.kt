@@ -38,7 +38,7 @@ import eu.kanade.presentation.manga.components.MangaCoverDialog
 import eu.kanade.presentation.manga.components.ScanlatorFilterDialog
 import eu.kanade.presentation.manga.components.SetIntervalDialog
 import eu.kanade.presentation.util.AssistContentScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.isLocalOrStub
@@ -70,6 +70,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 import logcat.LogPriority
 import mihon.feature.migration.config.MigrationConfigScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
@@ -87,13 +88,15 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-class MangaScreen(
-    private val mangaId: Long,
+@Parcelize
+data class MangaScreen(
+    val mangaId: Long,
     val fromSource: Boolean = false,
-    private val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
-) : Screen(), AssistContentScreen {
+    val smartSearchConfig: SourcesScreen.SmartSearchConfig? = null,
+) : ParcelableScreen(), AssistContentScreen {
 
-    private var assistUrl: String? = null
+    @delegate:Transient
+    private var assistUrl: String? by mutableStateOf(null)
 
     override fun onProvideAssistUrl() = assistUrl
 

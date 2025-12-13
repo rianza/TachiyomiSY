@@ -11,16 +11,18 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.GlobalSearchScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import exh.ui.ifSourcesLoaded
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.screens.LoadingScreen
 
-class GlobalSearchScreen(
+@Parcelize
+data class GlobalSearchScreen(
     val searchQuery: String = "",
     private val extensionFilter: String? = null,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
