@@ -91,7 +91,7 @@ fun ScreenTransition(
         modifier = modifier,
         label = "transition",
     ) { screen ->
-        navigator.saveableState("transition", screen) {
+        navigator.saveableState(screen.key, screen) {
             content(screen)
         }
     }
