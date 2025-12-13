@@ -21,7 +21,7 @@ data class SourcePreferencesScreen(val sourceId: Long) : ParcelableScreen {
             state = screenModel.state,
             onClickReset = { screenModel.reset() },
             onClickLogin = { screenModel.login() },
-            onClickLogout = { screen-model.logout() },
+            onClickLogout = { screen - model.logout() },
             onPrefChange = { screenModel.onPrefChange(it) },
         )
     }
