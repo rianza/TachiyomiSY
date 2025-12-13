@@ -529,7 +529,6 @@ data class MangaScreen(
     }
     // SY <--
 
-
     // AZ -->
     private fun openRecommends(navigator: Navigator, source: Source?, manga: Manga) {
         source ?: return
