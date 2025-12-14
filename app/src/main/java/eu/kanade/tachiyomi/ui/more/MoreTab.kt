@@ -63,7 +63,6 @@ data object MoreTab : Tab {
     override fun Content() {
         val context = LocalContext.current
         val navigator = LocalNavigator.currentOrThrow
-        val tabNavigator = LocalTabNavigator.current
         val screenModel = rememberScreenModel { MoreScreenModel() }
         val downloadQueueState by screenModel.downloadQueueState.collectAsState()
         MoreScreen(
@@ -77,15 +76,15 @@ data object MoreTab : Tab {
             showNavHistory = screenModel.showNavHistory,
             // SY <--
             onClickDownloadQueue = { navigator.push(DownloadQueueScreen) },
-            onClickCategories = { navigator.push(CategoryScreen) },
-            onClickStats = { navigator.push(StatsScreen) },
+            onClickCategories = { navigator.push(CategoryScreen()) },
+            onClickStats = { navigator.push(StatsScreen()) },
             onClickDataAndStorage = { navigator.push(SettingsScreen(SettingsScreen.Destination.DataAndStorage)) },
             onClickSettings = { navigator.push(SettingsScreen()) },
             onClickAbout = { navigator.push(SettingsScreen(SettingsScreen.Destination.About)) },
             // SY -->
             onClickBatchAdd = { navigator.push(BatchAddScreen()) },
-            onClickUpdates = { tabNavigator.current = UpdatesTab },
-            onClickHistory = { tabNavigator.current = HistoryTab },
+            onClickUpdates = { navigator.push(UpdatesTab) },
+            onClickHistory = { navigator.push(HistoryTab) },
             // SY <--
         )
     }

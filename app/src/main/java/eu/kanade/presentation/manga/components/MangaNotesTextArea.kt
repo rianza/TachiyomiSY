@@ -60,7 +60,7 @@ private const val MAX_LENGTH_WARN = MAX_LENGTH * 0.9
 
 @Composable
 fun MangaNotesTextArea(
-    notes: String,
+    state: MangaNotesScreen.State,
     onUpdate: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -81,7 +81,7 @@ fun MangaNotesTextArea(
         }
     }
     LaunchedEffect(Unit) {
-        richTextState.setMarkdown(notes)
+        richTextState.setMarkdown(state.notes)
         richTextState.config.unorderedListIndent = 4
         richTextState.config.orderedListIndent = 20
     }

@@ -129,7 +129,7 @@ class MangaDexFollowsScreen(private val sourceId: Long) : Screen() {
                     initialSelection = dialog.initialSelection,
                     onDismissRequest = onDismissRequest,
                     onEditCategories = {
-                        navigator.push(CategoryScreen)
+                        navigator.push(CategoryScreen())
                     },
                     onConfirm = { include, _ ->
                         screenModel.changeMangaFavorite(dialog.manga)

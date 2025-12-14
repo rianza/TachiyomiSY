@@ -38,6 +38,7 @@ import cafe.adriel.voyager.navigator.tab.TabNavigator
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.domain.ui.UiPreferences
+import eu.kanade.presentation.util.Tab
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
@@ -202,7 +203,7 @@ data object HomeScreen : ParcelableScreen() {
 
     @Composable
     private fun RowScope.NavigationBarItem(
-        tab: eu.kanade.presentation.util.Tab, /* SY --> */
+        tab: Tab, /* SY --> */
         alwaysShowLabel: Boolean, /* SY <-- */
     ) {
         val tabNavigator = LocalTabNavigator.current
@@ -232,7 +233,7 @@ data object HomeScreen : ParcelableScreen() {
     }
 
     @Composable
-    fun NavigationRailItem(tab: eu.kanade.presentation.util.Tab/* SY --> */, alwaysShowLabel: Boolean/* SY <-- */) {
+    fun NavigationRailItem(tab: Tab/* SY --> */, alwaysShowLabel: Boolean/* SY <-- */) {
         val tabNavigator = LocalTabNavigator.current
         val navigator = LocalNavigator.currentOrThrow
         val scope = rememberCoroutineScope()
@@ -260,7 +261,7 @@ data object HomeScreen : ParcelableScreen() {
     }
 
     @Composable
-    private fun NavigationIconItem(tab: eu.kanade.presentation.util.Tab) {
+    private fun NavigationIconItem(tab: Tab) {
         BadgedBox(
             badge = {
                 when {

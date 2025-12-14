@@ -92,7 +92,7 @@ data object UpdatesTab : Tab {
                 val intent = ReaderActivity.newIntent(context, it.update.mangaId, it.update.chapterId)
                 context.startActivity(intent)
             },
-            onCalendarClicked = { navigator.push(UpcomingScreen) },
+            onCalendarClicked = { navigator.push(UpcomingScreen()) },
         )
 
         val onDismissDialog = { screenModel.setDialog(null) }

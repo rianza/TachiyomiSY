@@ -12,16 +12,14 @@ import eu.kanade.presentation.category.SourceCategoryScreen
 import eu.kanade.presentation.category.components.CategoryCreateDialog
 import eu.kanade.presentation.category.components.CategoryDeleteDialog
 import eu.kanade.presentation.category.components.CategoryRenameDialog
-import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
+import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.parcelize.Parcelize
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
 
-@Parcelize
-data object SourceCategoryScreen : ParcelableScreen() {
+class SourceCategoryScreen : Screen() {
 
     @Composable
     override fun Content() {

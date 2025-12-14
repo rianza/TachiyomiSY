@@ -60,7 +60,7 @@ object SettingsBrowseScreen : SearchableSettings {
                             title = stringResource(MR.strings.action_edit_categories),
                             subtitle = pluralStringResource(MR.plurals.num_categories, count.size, count.size),
                             onClick = {
-                                navigator.push(SourceCategoryScreen)
+                                navigator.push(SourceCategoryScreen())
                             },
                         )
                     },

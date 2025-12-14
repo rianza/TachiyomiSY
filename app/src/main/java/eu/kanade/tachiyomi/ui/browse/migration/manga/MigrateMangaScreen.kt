@@ -84,7 +84,7 @@ data class MigrateMangaScreen(
                         onClick = {
                             val selection = state.selection
                             screenModel.clearSelection()
-                            navigator.push(MigrationConfigScreen(selection.toList()))
+                            navigator.push(MigrationConfigScreen(selection))
                         },
                         expanded = lazyListState.shouldExpandFAB(),
                     )
