@@ -205,6 +205,28 @@ object ImageUtil {
         RIGHT,
         LEFT,
     }
+
+    fun isColor(imageSource: BufferedSource): Boolean {
+        val options = extractImageOptions(imageSource).apply {
+            inJustDecodeBounds = false
+            inSampleSize = 4
+        }
+        val imageBitmap = BitmapFactory.decodeStream(imageSource.peek().inputStream(), null, options) ?: return false
+
+        val pixels = IntArray(imageBitmap.width * imageBitmap.height)
+        imageBitmap.getPixels(pixels, 0, imageBitmap.width, 0, 0, imageBitmap.width, imageBitmap.height)
+
+        var colorCount = 0
+        for (pixel in pixels) {
+            val r = Color.red(pixel)
+            val g = Color.green(pixel)
+            val b = Color.blue(pixel)
+            if (abs(r - g) > IS_COLOR_THRESHOLD || abs(r - b) > IS_COLOR_THRESHOLD || abs(g - b) > IS_COLOR_THRESHOLD) {
+                colorCount++
+            }
+        }
+        return colorCount.toFloat() / pixels.size > IS_COLOR_RATIO
+    }
     // SY -->
 
     /**
@@ -803,6 +825,9 @@ object ImageUtil {
 
     private val Bitmap.rect: Rect
         get() = Rect(0, 0, width, height)
+
+    private const val IS_COLOR_THRESHOLD = 15
+    private const val IS_COLOR_RATIO = 0.001
     // SY <--
 }
 
