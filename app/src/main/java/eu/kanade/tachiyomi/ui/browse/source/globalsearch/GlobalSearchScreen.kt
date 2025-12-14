@@ -14,8 +14,8 @@ import eu.kanade.presentation.browse.GlobalSearchScreen
 import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
-import kotlinx.parcelize.Parcelize
 import exh.ui.ifSourcesLoaded
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.screens.LoadingScreen
 
 @Parcelize

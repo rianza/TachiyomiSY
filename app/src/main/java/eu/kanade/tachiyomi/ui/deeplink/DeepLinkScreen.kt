@@ -13,8 +13,8 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.GlobalSearchScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
-import kotlinx.parcelize.Parcelize
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
+import kotlinx.parcelize.Parcelize
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
