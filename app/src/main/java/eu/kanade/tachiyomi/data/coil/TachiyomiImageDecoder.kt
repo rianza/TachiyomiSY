@@ -11,8 +11,8 @@ import coil3.decode.Decoder
 import coil3.decode.ImageSource
 import coil3.fetch.SourceFetchResult
 import coil3.request.Options
-import coil3.request.bitmapConfig
 import com.hippo.unifile.UniFile
+import eu.kanade.tachiyomi.data.coil.bitmapConfig
 import eu.kanade.tachiyomi.util.storage.CbzCrypto
 import eu.kanade.tachiyomi.util.storage.CbzCrypto.getCoverStream
 import mihon.core.common.archive.archiveReader
@@ -62,18 +62,15 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
             scale = options.scale,
         )
 
-        var bitmap = decoder.decode(sampleSize = sampleSize)
+        val bitmapConfig = if (ImageUtil.isColor(resources.source())) {
+            Bitmap.Config.ARGB_8888
+        } else {
+            Bitmap.Config.RGB_565
+        }
+        var bitmap = decoder.decode(sampleSize = sampleSize, bitmapConfig = bitmapConfig)
         decoder.recycle()
 
         check(bitmap != null) { "Failed to decode image" }
-
-        if (bitmap.config != options.bitmapConfig) {
-            val newBitmap = bitmap.copy(options.bitmapConfig, false)
-            if (newBitmap != null) {
-                bitmap.recycle()
-                bitmap = newBitmap
-            }
-        }
 
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&

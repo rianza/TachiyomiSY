@@ -35,10 +35,8 @@ import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.EASE_OUT_QU
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.SCALE_TYPE_CENTER_INSIDE
 import com.github.chrisbanes.photoview.PhotoView
 import eu.kanade.domain.base.BasePreferences
-import eu.kanade.tachiyomi.data.coil.bitmapConfig
 import eu.kanade.tachiyomi.data.coil.cropBorders
 import eu.kanade.tachiyomi.data.coil.customDecoder
-import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonSubsamplingImageView
 import eu.kanade.tachiyomi.util.system.animatorDurationScale
 import eu.kanade.tachiyomi.util.view.isVisibleOnScreen
@@ -62,8 +60,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
     @StyleRes defStyleRes: Int = 0,
     private val isWebtoon: Boolean = false,
 ) : FrameLayout(context, attrs, defStyleAttrs, defStyleRes) {
-
-    private val readerPreferences by lazy { Injekt.get<ReaderPreferences>() }
 
     private var pageView: View? = null
 
@@ -154,7 +150,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             prepareAnimatedImageView()
             setAnimatedImage(drawable, config)
         } else {
-            prepareNonAnimatedImageView()
+            prepareNonAnimatedImageView(null)
             setNonAnimatedImage(drawable, config)
         }
     }
@@ -165,7 +161,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             prepareAnimatedImageView()
             setAnimatedImage(source, config)
         } else {
-            prepareNonAnimatedImageView()
+            prepareNonAnimatedImageView(source)
             setNonAnimatedImage(source, config)
         }
     }
@@ -232,7 +228,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
         }
     }
 
-    private fun prepareNonAnimatedImageView() {
+    private fun prepareNonAnimatedImageView(source: BufferedSource? = null) {
         if (pageView is SubsamplingScaleImageView) return
         removeView(pageView)
 
@@ -245,9 +241,9 @@ open class ReaderPageImageView @JvmOverloads constructor(
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
             setMinimumTileDpi(320)
-            setDither(readerPreferences.dither565().get())
+            setDither(true)
             setPreferredBitmapConfig(
-                if (readerPreferences.trueColor().get()) {
+                if (source != null && ImageUtil.isColor(source)) {
                     Bitmap.Config.ARGB_8888
                 } else {
                     Bitmap.Config.RGB_565
@@ -336,13 +332,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     .precision(Precision.INEXACT)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
-                    .bitmapConfig(
-                        if (readerPreferences.trueColor().get()) {
-                            Bitmap.Config.ARGB_8888
-                        } else {
-                            Bitmap.Config.RGB_565
-                        },
-                    )
                     .crossfade(false)
                     .build()
                     .let(context.imageLoader::enqueue)

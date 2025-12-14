@@ -8,17 +8,7 @@ import coil3.size.Dimension
 import coil3.size.Scale
 import coil3.size.Size
 import coil3.size.isOriginal
-import android.graphics.Bitmap
 import coil3.size.pxOrElse
-
-fun ImageRequest.Builder.bitmapConfig(config: Bitmap.Config) = apply {
-    extras[bitmapConfigKey] = config
-}
-
-val Options.bitmapConfig: Bitmap.Config
-    get() = getExtra(bitmapConfigKey)
-
-private val bitmapConfigKey = Extras.Key(default = Bitmap.Config.RGB_565)
 
 internal inline fun Size.widthPx(scale: Scale, original: () -> Int): Int {
     return if (isOriginal) original() else width.toPx(scale)
