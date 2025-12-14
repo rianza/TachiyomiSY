@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.ui.reader.viewer
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.Animatable
@@ -19,6 +20,8 @@ import androidx.annotation.StyleRes
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.core.os.postDelayed
 import androidx.core.view.isVisible
+import androidx.lifecycle.findViewTreeLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import coil3.BitmapImage
 import coil3.asDrawable
 import coil3.dispose
@@ -40,6 +43,9 @@ import eu.kanade.tachiyomi.data.coil.customDecoder
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonSubsamplingImageView
 import eu.kanade.tachiyomi.util.system.animatorDurationScale
 import eu.kanade.tachiyomi.util.view.isVisibleOnScreen
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okio.BufferedSource
 import tachiyomi.core.common.util.system.ImageUtil
 import uy.kohesive.injekt.Injekt
@@ -150,7 +156,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             prepareAnimatedImageView()
             setAnimatedImage(drawable, config)
         } else {
-            prepareNonAnimatedImageView(null)
+            prepareNonAnimatedImageView(Bitmap.Config.ARGB_8888)
             setNonAnimatedImage(drawable, config)
         }
     }
@@ -161,8 +167,17 @@ open class ReaderPageImageView @JvmOverloads constructor(
             prepareAnimatedImageView()
             setAnimatedImage(source, config)
         } else {
-            prepareNonAnimatedImageView(source)
-            setNonAnimatedImage(source, config)
+            findViewTreeLifecycleOwner()?.lifecycleScope?.launch {
+                val bitmapConfig = withContext(Dispatchers.IO) {
+                    if (ImageUtil.isColor(source)) {
+                        Bitmap.Config.ARGB_8888
+                    } else {
+                        Bitmap.Config.RGB_565
+                    }
+                }
+                prepareNonAnimatedImageView(bitmapConfig)
+                setNonAnimatedImage(source, config)
+            }
         }
     }
 
@@ -228,7 +243,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
         }
     }
 
-    private fun prepareNonAnimatedImageView(source: BufferedSource? = null) {
+    private fun prepareNonAnimatedImageView(bitmapConfig: Bitmap.Config) {
         if (pageView is SubsamplingScaleImageView) return
         removeView(pageView)
 
@@ -242,13 +257,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
             setMinimumTileDpi(320)
             setDither(true)
-            setPreferredBitmapConfig(
-                if (source != null && ImageUtil.isColor(source)) {
-                    Bitmap.Config.ARGB_8888
-                } else {
-                    Bitmap.Config.RGB_565
-                },
-            )
+            setPreferredBitmapConfig(bitmapConfig)
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
@@ -309,32 +318,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
                 setImage(ImageSource.inputStream(data.inputStream()))
                 isVisible = true
-                return@apply
-            }
-            else -> {
-                ImageRequest.Builder(context)
-                    .data(data)
-                    .memoryCachePolicy(CachePolicy.DISABLED)
-                    .diskCachePolicy(CachePolicy.DISABLED)
-                    .target(
-                        onSuccess = { result ->
-                            val image = result as BitmapImage
-                            setImage(ImageSource.bitmap(image.bitmap))
-                            isVisible = true
-                        },
-                    )
-                    .listener(
-                        onError = { _, result ->
-                            onImageLoadError(result.throwable)
-                        },
-                    )
-                    .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
-                    .cropBorders(config.cropBorders)
-                    .customDecoder(true)
-                    .crossfade(false)
-                    .build()
-                    .let(context.imageLoader::enqueue)
             }
             else -> {
                 throw IllegalArgumentException("Not implemented for class ${data::class.simpleName}")
