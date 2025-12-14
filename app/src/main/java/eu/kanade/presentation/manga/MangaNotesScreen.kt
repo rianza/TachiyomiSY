@@ -15,7 +15,7 @@ import tachiyomi.presentation.core.i18n.stringResource
 
 @Composable
 fun MangaNotesScreen(
-    state: MangaNotesScreen.State,
+    state: MangaNotesScreen.State.Success,
     navigateUp: () -> Unit,
     onUpdate: (String) -> Unit,
 ) {
@@ -34,7 +34,7 @@ fun MangaNotesScreen(
         },
     ) { contentPadding ->
         MangaNotesTextArea(
-            state = state,
+            notes = state.notes,
             onUpdate = onUpdate,
             modifier = Modifier
                 .padding(contentPadding)
