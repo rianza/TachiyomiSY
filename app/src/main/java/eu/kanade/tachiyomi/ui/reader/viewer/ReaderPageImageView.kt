@@ -249,14 +249,13 @@ open class ReaderPageImageView @JvmOverloads constructor(
         pageView = if (isWebtoon) {
             WebtoonSubsamplingImageView(context)
         } else {
+            SubsamplingScaleImageView.setPreferredBitmapConfig(bitmapConfig)
             SubsamplingScaleImageView(context)
         }.apply {
             setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
             setMinimumTileDpi(320)
-            setDither(true)
-            setPreferredBitmapConfig(bitmapConfig)
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
