@@ -16,8 +16,8 @@ import eu.kanade.presentation.category.components.CategoryRenameDialog
 import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.parcelize.Parcelize
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.screens.LoadingScreen
 
 @Parcelize
