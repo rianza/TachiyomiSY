@@ -186,11 +186,9 @@ class MainActivity : BaseActivity() {
 
         setComposeContent {
             val context = LocalContext.current
-
             var incognito by remember { mutableStateOf(getIncognitoState.await(null)) }
             val downloadOnly by preferences.downloadedOnly().collectAsState()
             val indexing by downloadCache.isInitializing.collectAsState()
-
             val isSystemInDarkTheme = isSystemInDarkTheme()
             val statusBarBackgroundColor = when {
                 indexing -> IndexingBannerBackgroundColor
@@ -207,7 +205,6 @@ class MainActivity : BaseActivity() {
                     navigationBarStyle = if (isSystemInDarkTheme) darkStyle else lightStyle,
                 )
             }
-
             CompositionLocalProvider(LocalNavigatorSaver provides parcelableNavigatorSaver()) {
                 Navigator(
                     screen = HomeScreen,
@@ -215,14 +212,11 @@ class MainActivity : BaseActivity() {
                 ) { navigator ->
                     LaunchedEffect(navigator) {
                         this@MainActivity.navigator = navigator
-
                         if (isLaunch) {
                             // Set start screen
                             handleIntentAction(intent, navigator)
-
                             // Reset Incognito Mode on relaunch
                             preferences.incognitoMode().set(false)
-
                             // SY -->
                             initWhenIdle {
                                 // Upload settings
@@ -232,7 +226,6 @@ class MainActivity : BaseActivity() {
                                     runExhConfigureDialog = true
                                 }
                                 // Scheduler uploader job if required
-
                                 EHentaiUpdateWorker.scheduleBackground(this@MainActivity)
                             }
                             // SY <--
@@ -243,7 +236,6 @@ class MainActivity : BaseActivity() {
                             .let(getIncognitoState::subscribe)
                             .collectLatest { incognito = it }
                     }
-
                     val scaffoldInsets = WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
                     Scaffold(
                         topBar = {
@@ -265,7 +257,6 @@ class MainActivity : BaseActivity() {
                                     .padding(contentPadding)
                                     .consumeWindowInsets(contentPadding),
                             )
-
                             // Draw navigation bar scrim when needed
                             if (remember { isNavigationBarNeedsScrim() }) {
                                 Spacer(
@@ -279,7 +270,6 @@ class MainActivity : BaseActivity() {
                             }
                         }
                     }
-
                     // Pop source-related screens when incognito mode is turned off
                     LaunchedEffect(Unit) {
                         preferences.incognitoMode().changes()
@@ -295,14 +285,11 @@ class MainActivity : BaseActivity() {
                             }
                             .launchIn(this)
                     }
-
                     HandleOnNewIntent(context = context, navigator = navigator)
-
                     CheckForUpdates()
                     ShowOnboarding()
                 }
             }
-
             // SY -->
             if (hasDebugOverlay) {
                 val isDebugOverlayEnabled by remember {
@@ -313,14 +300,12 @@ class MainActivity : BaseActivity() {
                 }
             }
             // SY <--
-
             var showChangelog by remember { mutableStateOf(didMigration && !BuildConfig.DEBUG) }
             if (showChangelog) {
                 // SY -->
                 WhatsNewDialog(onDismissRequest = { showChangelog = false })
                 // SY <--
             }
-
             // SY -->
             ConfigureExhDialog(run = runExhConfigureDialog, onRunning = { runExhConfigureDialog = false })
             // SY <--
