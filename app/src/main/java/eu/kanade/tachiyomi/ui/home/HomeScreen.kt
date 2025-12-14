@@ -37,8 +37,9 @@ import cafe.adriel.voyager.navigator.tab.LocalTabNavigator
 import cafe.adriel.voyager.navigator.tab.TabNavigator
 import eu.kanade.core.preference.asState
 import eu.kanade.domain.source.service.SourcePreferences
+import android.os.Parcelable
 import eu.kanade.domain.ui.UiPreferences
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.presentation.util.isTabletUi
 import eu.kanade.tachiyomi.ui.browse.BrowseTab
 import eu.kanade.tachiyomi.ui.download.DownloadQueueScreen
@@ -48,6 +49,7 @@ import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.MoreTab
 import eu.kanade.tachiyomi.ui.updates.UpdatesTab
 import kotlinx.coroutines.channels.Channel
+import kotlinx.parcelize.Parcelize
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -63,7 +65,8 @@ import tachiyomi.presentation.core.i18n.pluralStringResource
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
-object HomeScreen : Screen() {
+@Parcelize
+data object HomeScreen : ParcelableScreen() {
 
     private val librarySearchEvent = Channel<String>()
     private val openTabEvent = Channel<Tab>()
@@ -327,11 +330,16 @@ object HomeScreen : Screen() {
         showBottomNavEvent.send(show)
     }
 
-    sealed interface Tab {
+    sealed interface Tab : Parcelable {
+        @Parcelize
         data class Library(val mangaIdToOpen: Long? = null) : Tab
+        @Parcelize
         data object Updates : Tab
+        @Parcelize
         data object History : Tab
+        @Parcelize
         data class Browse(val toExtensions: Boolean = false) : Tab
+        @Parcelize
         data class More(val toDownloads: Boolean) : Tab
     }
 }
