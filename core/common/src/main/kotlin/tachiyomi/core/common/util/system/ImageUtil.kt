@@ -121,6 +121,52 @@ object ImageUtil {
     }
 
     /**
+     * Check whether the image is color.
+     *
+     * @return true if the image is color.
+     */
+    fun isColor(imageSource: BufferedSource): Boolean {
+        return try {
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeStream(imageSource.peek().inputStream(), null, options)
+
+            val sampleSize = if (options.outWidth > 20 || options.outHeight > 20) {
+                min(options.outWidth, options.outHeight) / 20
+            } else {
+                1
+            }
+
+            val bitmapOptions = BitmapFactory.Options().apply {
+                inSampleSize = sampleSize.coerceAtLeast(1)
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+
+            val bitmap = BitmapFactory.decodeStream(imageSource.peek().inputStream(), null, bitmapOptions)
+                ?: return false
+
+            for (x in 0 until bitmap.width step 5) {
+                for (y in 0 until bitmap.height step 5) {
+                    val pixel = bitmap.getPixel(x, y)
+                    val red = Color.red(pixel)
+                    val green = Color.green(pixel)
+                    val blue = Color.blue(pixel)
+                    if (abs(red - green) > 10 || abs(red - blue) > 10 || abs(green - blue) > 10) {
+                        bitmap.recycle()
+                        return true
+                    }
+                }
+            }
+            bitmap.recycle()
+            false
+        } catch (e: Exception) {
+            // Assume color on error
+            true
+        }
+    }
+
+    /**
      * Check whether the image is wide (which we consider a double-page spread).
      *
      * @return true if the width is greater than the height

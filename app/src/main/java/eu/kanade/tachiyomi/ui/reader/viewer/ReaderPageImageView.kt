@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.viewer
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.Animatable
@@ -302,7 +303,16 @@ open class ReaderPageImageView @JvmOverloads constructor(
             }
             is BufferedSource -> {
                 if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                    if (ImageUtil.canUseHardwareBitmap(data)) {
+                        val isColor = ImageUtil.isColor(data)
+                        setHardwareConfig(
+                            if (isColor) {
+                                Bitmap.Config.ARGB_8888
+                            } else {
+                                Bitmap.Config.RGB_565
+                            },
+                        )
+                    }
                     setImage(ImageSource.inputStream(data.inputStream()))
                     isVisible = true
                     return@apply
