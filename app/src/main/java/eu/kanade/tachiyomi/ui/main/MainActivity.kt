@@ -410,7 +410,7 @@ class MainActivity : BaseActivity() {
 
         LaunchedEffect(Unit) {
             if (!preferences.shownOnboardingFlow().get() && navigator.lastItem !is OnboardingScreen) {
-                navigator.push(OnboardingScreen())
+                navigator.push(OnboardingScreen)
             }
         }
     }
