@@ -48,7 +48,6 @@ import androidx.core.util.Consumer
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import androidx.lifecycle.lifecycleScope
-import cafe.adriel.voyager.core.annotation.ExperimentalVoyagerApi
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.NavigatorDisposeBehavior
@@ -115,7 +114,6 @@ import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.injectLazy
 import java.util.LinkedList
 
-@OptIn(ExperimentalVoyagerApi::class)
 class MainActivity : BaseActivity() {
 
     private val libraryPreferences: LibraryPreferences by injectLazy()
@@ -186,7 +184,9 @@ class MainActivity : BaseActivity() {
         val hasDebugOverlay = (BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "releaseTest")
         // SY <--
 
-        setComposeContent {
+        setComposeContent
+        @OptIn(ExperimentalVoyagerApi::class)
+        {
             val context = LocalContext.current
 
             var incognito by remember { mutableStateOf(getIncognitoState.await(null)) }
