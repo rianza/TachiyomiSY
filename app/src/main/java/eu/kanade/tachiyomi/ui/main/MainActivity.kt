@@ -52,6 +52,7 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.NavigatorDisposeBehavior
 import cafe.adriel.voyager.navigator.currentOrThrow
+import cafe.adriel.voyager.core.annotation.ExperimentalVoyagerApi
 import cafe.adriel.voyager.navigator.saver.LocalNavigatorSaver
 import cafe.adriel.voyager.navigator.saver.parcelableNavigatorSaver
 import com.google.firebase.Firebase
@@ -114,6 +115,7 @@ import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.injectLazy
 import java.util.LinkedList
 
+@OptIn(ExperimentalVoyagerApi::class)
 class MainActivity : BaseActivity() {
 
     private val libraryPreferences: LibraryPreferences by injectLazy()
