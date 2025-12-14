@@ -50,9 +50,10 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.components.AppBarActions
 import eu.kanade.presentation.components.DropdownMenu
 import eu.kanade.presentation.components.NestedMenuItem
-import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.databinding.DownloadListBinding
+import eu.kanade.tachiyomi.ui.base.screen.ParcelableScreen
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.parcelize.Parcelize
 import tachiyomi.core.common.util.lang.launchUI
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.Pill
@@ -62,7 +63,8 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.EmptyScreen
 import kotlin.math.roundToInt
 
-object DownloadQueueScreen : Screen() {
+@Parcelize
+data object DownloadQueueScreen : ParcelableScreen() {
 
     @Composable
     override fun Content() {

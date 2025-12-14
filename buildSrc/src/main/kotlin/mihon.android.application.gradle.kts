@@ -10,8 +10,6 @@ plugins {
 }
 
 android {
-    namespace = "eu.kanade.tachiyomi"
-
     defaultConfig {
         targetSdk = AndroidConfig.TARGET_SDK
     }

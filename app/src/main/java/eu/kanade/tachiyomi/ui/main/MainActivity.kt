@@ -207,7 +207,7 @@ class MainActivity : BaseActivity() {
                 )
             }
 
-            CompositionLocalProvider(LocalNavigatorSaver provides parcelableNavigatorSaver(HomeScreen)) {
+            CompositionLocalProvider(LocalNavigatorSaver provides parcelableNavigatorSaver) {
                 Navigator(
                     screen = HomeScreen,
                     disposeBehavior = NavigatorDisposeBehavior(disposeNestedNavigators = false, disposeSteps = true),

@@ -349,7 +349,7 @@ data class BrowseSourceScreen(
                 ChangeCategoryDialog(
                     initialSelection = dialog.initialSelection,
                     onDismissRequest = onDismissRequest,
-                    onEditCategories = { navigator.push(CategoryScreen()) },
+                    onEditCategories = { navigator.push(CategoryScreen) },
                     onConfirm = { include, _ ->
                         screenModel.changeMangaFavorite(dialog.manga)
                         screenModel.moveMangaToCategories(dialog.manga, include)
