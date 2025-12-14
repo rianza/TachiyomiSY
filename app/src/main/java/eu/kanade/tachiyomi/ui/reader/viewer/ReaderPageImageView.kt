@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.viewer
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.Animatable
@@ -34,8 +35,10 @@ import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.EASE_OUT_QU
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView.SCALE_TYPE_CENTER_INSIDE
 import com.github.chrisbanes.photoview.PhotoView
 import eu.kanade.domain.base.BasePreferences
+import eu.kanade.tachiyomi.data.coil.bitmapConfig
 import eu.kanade.tachiyomi.data.coil.cropBorders
 import eu.kanade.tachiyomi.data.coil.customDecoder
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonSubsamplingImageView
 import eu.kanade.tachiyomi.util.system.animatorDurationScale
 import eu.kanade.tachiyomi.util.view.isVisibleOnScreen
@@ -60,9 +63,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
     private val isWebtoon: Boolean = false,
 ) : FrameLayout(context, attrs, defStyleAttrs, defStyleRes) {
 
-    private val alwaysDecodeLongStripWithSSIV by lazy {
-        Injekt.get<BasePreferences>().alwaysDecodeLongStripWithSSIV().get()
-    }
+    private val readerPreferences by lazy { Injekt.get<ReaderPreferences>() }
 
     private var pageView: View? = null
 
@@ -243,7 +244,15 @@ open class ReaderPageImageView @JvmOverloads constructor(
             setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
-            setMinimumTileDpi(180)
+            setMinimumTileDpi(320)
+            setDither(readerPreferences.dither565().get())
+            setPreferredBitmapConfig(
+                if (readerPreferences.trueColor().get()) {
+                    Bitmap.Config.ARGB_8888
+                } else {
+                    Bitmap.Config.RGB_565
+                },
+            )
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
@@ -301,13 +310,12 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
-                if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
-                    setImage(ImageSource.inputStream(data.inputStream()))
-                    isVisible = true
-                    return@apply
-                }
-
+                setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                setImage(ImageSource.inputStream(data.inputStream()))
+                isVisible = true
+                return@apply
+            }
+            else -> {
                 ImageRequest.Builder(context)
                     .data(data)
                     .memoryCachePolicy(CachePolicy.DISABLED)
@@ -328,6 +336,13 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     .precision(Precision.INEXACT)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
+                    .bitmapConfig(
+                        if (readerPreferences.trueColor().get()) {
+                            Bitmap.Config.ARGB_8888
+                        } else {
+                            Bitmap.Config.RGB_565
+                        },
+                    )
                     .crossfade(false)
                     .build()
                     .let(context.imageLoader::enqueue)

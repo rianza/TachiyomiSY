@@ -45,6 +45,8 @@ fun ReaderBottomBar(
     onClickShare: (() -> Unit)?,
     onClickPageLayout: () -> Unit,
     onClickShiftPage: () -> Unit,
+    trueColor: Boolean,
+    onClickToggleTrueColor: () -> Unit,
     // SY <--
     modifier: Modifier = Modifier,
 ) {
@@ -143,6 +145,17 @@ fun ReaderBottomBar(
                 Icon(
                     painter = painterResource(R.drawable.ic_page_next_outline_24dp),
                     contentDescription = stringResource(SYMR.strings.shift_double_pages),
+                )
+            }
+        }
+
+        if (ReaderBottomButton.HighColorDepth.isIn(enabledButtons)) {
+            IconButton(onClick = onClickToggleTrueColor) {
+                Icon(
+                    painter = painterResource(
+                        if (trueColor) R.drawable.ic_high_quality_24dp else R.drawable.ic_high_quality_off_24dp,
+                    ),
+                    contentDescription = stringResource(SYMR.strings.high_color_depth),
                 )
             }
         }

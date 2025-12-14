@@ -120,6 +120,8 @@ fun ReaderAppBars(
     onClickChapterList: () -> Unit,
     onClickPageLayout: () -> Unit,
     onClickShiftPage: () -> Unit,
+    trueColor: Boolean,
+    onClickToggleTrueColor: () -> Unit,
     // SY <--
 ) {
     val isRtl = viewer is R2LPagerViewer
@@ -288,6 +290,8 @@ fun ReaderAppBars(
                         onClickShare = onShare,
                         onClickPageLayout = onClickPageLayout,
                         onClickShiftPage = onClickShiftPage,
+                         trueColor = trueColor,
+                         onClickToggleTrueColor = onClickToggleTrueColor,
                         // SY <--
                         modifier = Modifier
                             .fillMaxWidth()

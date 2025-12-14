@@ -683,6 +683,20 @@ class ReaderActivity : BaseActivity() {
                 }
             },
             onClickShiftPage = ::shiftDoublePages,
+            trueColor = readerPreferences.trueColor().get(),
+            onClickToggleTrueColor = {
+                val newValue = !readerPreferences.trueColor().get()
+                readerPreferences.trueColor().set(newValue)
+                menuToggleToast?.cancel()
+                menuToggleToast = toast(
+                    if (newValue) {
+                        SYMR.strings.high_color_depth_enabled
+                    } else {
+                        SYMR.strings.high_color_depth_disabled
+                    },
+                )
+                reloadCurrentPage()
+            },
             // SY <--
         )
     }
@@ -829,6 +843,23 @@ class ReaderActivity : BaseActivity() {
                 viewer.updateShifting()
                 viewer.setChaptersDoubleShift(it)
                 invalidateOptionsMenu()
+            }
+        }
+    }
+
+    private fun reloadCurrentPage() {
+        val viewer = viewModel.state.value.viewer ?: return
+        val currentPage = (viewer as? PagerViewer)?.currentPage
+            ?: (viewer as? WebtoonViewer)?.currentPage
+            ?: return
+        viewModel.state.value.viewerChapters?.currChapter?.pages?.getOrNull(currentPage.index)
+            ?: return
+        if (currentPage.status == Page.State.ERROR) {
+            viewModel.state.value.viewerChapters?.currChapter?.pageLoader?.retryPage(currentPage)
+        } else {
+            (currentPage as? ReaderPage)?.let {
+                it.status = Page.State.QUEUE
+                it.chapter.pageLoader?.retryPage(it)
             }
         }
     }

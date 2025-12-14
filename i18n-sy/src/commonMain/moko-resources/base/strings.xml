@@ -741,4 +741,8 @@
 
     <!-- Humanize time -->
     <string name="humanize_fallback">moments ago</string>
+
+    <string name="high_color_depth">High color depth</string>
+    <string name="high_color_depth_enabled">High color depth enabled</string>
+    <string name="high_color_depth_disabled">High color depth disabled</string>
 </resources>

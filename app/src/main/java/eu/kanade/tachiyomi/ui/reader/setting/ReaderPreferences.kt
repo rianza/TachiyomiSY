@@ -83,6 +83,10 @@ class ReaderPreferences(
 
     fun webtoonDisableZoomOut() = preferenceStore.getBoolean("webtoon_disable_zoom_out", false)
 
+    fun dither565() = preferenceStore.getBoolean("pref_dither_565", true)
+
+    fun trueColor() = preferenceStore.getBoolean("pref_true_color", false)
+
     // endregion
 
     // region Split two page spread
