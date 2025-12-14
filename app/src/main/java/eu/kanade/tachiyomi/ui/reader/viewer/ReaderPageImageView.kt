@@ -303,15 +303,14 @@ open class ReaderPageImageView @JvmOverloads constructor(
             }
             is BufferedSource -> {
                 if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    if (ImageUtil.canUseHardwareBitmap(data)) {
-                        val isColor = ImageUtil.isColor(data)
-                        setHardwareConfig(
-                            if (isColor) {
-                                Bitmap.Config.ARGB_8888
-                            } else {
-                                Bitmap.Config.RGB_565
-                            },
-                        )
+                    // Keep this important safety check
+                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+
+                    // Set the bitmap config based on color
+                    if (ImageUtil.isColor(data)) {
+                        preferredBitmapConfig = Bitmap.Config.ARGB_8888
+                    } else {
+                        preferredBitmapConfig = Bitmap.Config.RGB_565
                     }
                     setImage(ImageSource.inputStream(data.inputStream()))
                     isVisible = true
