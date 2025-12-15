@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import eu.kanade.tachiyomi.ui.reader.setting.ImageQuality
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsScreenModel
 import eu.kanade.tachiyomi.util.system.hasDisplayCutout
@@ -53,6 +54,18 @@ internal fun ColumnScope.GeneralPage(screenModel: ReaderSettingsScreenModel) {
                 selected = readerTheme == value,
                 onClick = { screenModel.preferences.readerTheme().set(value) },
                 label = { Text(stringResource(labelRes)) },
+            )
+        }
+    }
+
+    val imageQuality by screenModel.imageQuality.collectAsState()
+
+    SettingsChipRow(SYMR.strings.image_quality) {
+        ImageQuality.values().map { value ->
+            FilterChip(
+                selected = imageQuality == value,
+                onClick = { screenModel.imageQuality.set(value) },
+                label = { Text(stringResource(value.titleRes)) },
             )
         }
     }

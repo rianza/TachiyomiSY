@@ -36,6 +36,7 @@ import com.github.chrisbanes.photoview.PhotoView
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.tachiyomi.data.coil.cropBorders
 import eu.kanade.tachiyomi.data.coil.customDecoder
+import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonSubsamplingImageView
 import eu.kanade.tachiyomi.util.system.animatorDurationScale
 import eu.kanade.tachiyomi.util.view.isVisibleOnScreen
@@ -63,6 +64,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
     private val alwaysDecodeLongStripWithSSIV by lazy {
         Injekt.get<BasePreferences>().alwaysDecodeLongStripWithSSIV().get()
     }
+
+    private val readerPreferences by lazy { Injekt.get<ReaderPreferences>() }
 
     private var pageView: View? = null
 
@@ -243,7 +246,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
-            setMinimumTileDpi(180)
+            setMinimumTileDpi(readerPreferences.imageQuality().get().dpi)
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {

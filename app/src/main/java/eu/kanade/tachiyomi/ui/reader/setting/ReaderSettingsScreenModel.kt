@@ -27,4 +27,6 @@ class ReaderSettingsScreenModel(
         .map { it.manga }
         .distinctUntilChanged()
         .stateIn(ioCoroutineScope, SharingStarted.Lazily, null)
+
+    val imageQuality = preferences.imageQuality()
 }

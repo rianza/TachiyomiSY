@@ -741,4 +741,9 @@
 
     <!-- Humanize time -->
     <string name="humanize_fallback">moments ago</string>
+
+    <!-- Image quality -->
+    <string name="image_quality">Image quality</string>
+    <string name="image_quality_default">Default</string>
+    <string name="image_quality_high">High</string>
 </resources>

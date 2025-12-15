@@ -184,6 +184,8 @@ class ReaderPreferences(
     fun centerMarginType() = preferenceStore.getInt("center_margin_type", PagerConfig.CenterMarginType.NONE)
 
     fun archiveReaderMode() = preferenceStore.getInt("archive_reader_mode", ArchiveReaderMode.LOAD_FROM_FILE)
+
+    fun imageQuality() = preferenceStore.getEnum("pref_image_quality", ImageQuality.DEFAULT)
     // SY <--
 
     enum class FlashColor {
@@ -287,4 +289,9 @@ class ReaderPreferences(
         )
         // SY <--
     }
+}
+
+enum class ImageQuality(val dpi: Int, val titleRes: StringResource) {
+    DEFAULT(180, SYMR.strings.image_quality_default),
+    HIGH(320, SYMR.strings.image_quality_high),
 }
