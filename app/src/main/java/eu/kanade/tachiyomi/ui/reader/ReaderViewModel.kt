@@ -285,6 +285,7 @@ class ReaderViewModel @JvmOverloads constructor(
             viewModelScope.launchIO {
                 val manga = getManga.await(mangaId)
                 if (manga != null) {
+                    sourceManager.isInitialized.first { it }
                     val source = sourceManager.getOrStub(manga.source)
                     val mergedReferences = if (source is MergedSource) {
                         getMergedReferencesById.await(manga.id)
