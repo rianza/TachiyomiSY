@@ -33,15 +33,11 @@ private val flashColors = listOf(
 @Composable
 internal fun ColumnScope.GeneralPage(screenModel: ReaderSettingsScreenModel) {
     val readerTheme by screenModel.preferences.readerTheme().collectAsState()
-
     val flashPageState by screenModel.preferences.flashOnPageChange().collectAsState()
-
     val flashMillisPref = screenModel.preferences.flashDurationMillis()
     val flashMillis by flashMillisPref.collectAsState()
-
     val flashIntervalPref = screenModel.preferences.flashPageInterval()
     val flashInterval by flashIntervalPref.collectAsState()
-
     val flashColorPref = screenModel.preferences.flashColor()
     val flashColor by flashColorPref.collectAsState()
 
