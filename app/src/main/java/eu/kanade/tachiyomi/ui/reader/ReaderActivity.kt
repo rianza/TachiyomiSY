@@ -1325,7 +1325,7 @@ class ReaderActivity : BaseActivity() {
                 }
                 val data = outputStream.toByteArray()
                 SubsamplingScaleImageView.setDisplayProfile(data)
-                TachiyomiImageDecoder.displayProfile = data
+                TachiyomiImageDecoder.displayProfile = null
             }
         }
 
