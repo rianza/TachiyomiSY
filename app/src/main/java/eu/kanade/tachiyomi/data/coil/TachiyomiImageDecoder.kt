@@ -41,7 +41,7 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         }
         val decoder = resources.sourceOrNull()?.use {
             coverStream.use { coverStream ->
-                ImageDecoder.newInstance(coverStream ?: it.inputStream(), options.cropBorders, null)
+                ImageDecoder.newInstance(coverStream ?: it.inputStream(), options.cropBorders, displayProfile)
             }
         }
         // SY <--
