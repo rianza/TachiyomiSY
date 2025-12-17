@@ -55,6 +55,8 @@ class ReaderPreferences(
 
     fun imageScaleType() = preferenceStore.getInt("pref_image_scale_type_key", 1)
 
+    fun webtoonImageScaleType() = preferenceStore.getInt("pref_webtoon_image_scale_type_key", 3)
+
     fun zoomStart() = preferenceStore.getInt("pref_zoom_start_key", 1)
 
     fun readerTheme() = preferenceStore.getInt("pref_reader_theme_key", 1)
@@ -82,8 +84,6 @@ class ReaderPreferences(
     fun skipDupe() = preferenceStore.getBoolean("skip_dupe", false)
 
     fun webtoonDisableZoomOut() = preferenceStore.getBoolean("webtoon_disable_zoom_out", false)
-
-    fun imageQuality() = preferenceStore.getEnum("pref_image_quality", ImageQuality.DEFAULT)
 
     // endregion
 
@@ -189,12 +189,6 @@ class ReaderPreferences(
 
     fun markReadDupe() = preferenceStore.getBoolean("mark_read_dupe", false)
     // SY <--
-
-    enum class ImageQuality(val dpi: Int, val stringRes: StringResource) {
-        DEFAULT(180, MR.strings.image_quality_default),
-        HIGH(240, MR.strings.image_quality_high),
-        HIGHEST(320, MR.strings.image_quality_highest),
-    }
 
     enum class FlashColor {
         BLACK,

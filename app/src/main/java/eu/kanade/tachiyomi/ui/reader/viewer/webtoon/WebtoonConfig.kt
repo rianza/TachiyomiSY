@@ -26,6 +26,9 @@ class WebtoonConfig(
 
     var themeChangedListener: (() -> Unit)? = null
 
+    var imageScaleType = 0
+        private set
+
     var imageCropBorders = false
         private set
 
@@ -52,6 +55,9 @@ class WebtoonConfig(
 
     // SY <--
     init {
+        readerPreferences.webtoonImageScaleType()
+            .register({ imageScaleType = it }, { imagePropertyChangedListener?.invoke() })
+
         readerPreferences.cropBordersWebtoon()
             .register({ imageCropBorders = it }, { imagePropertyChangedListener?.invoke() })
 

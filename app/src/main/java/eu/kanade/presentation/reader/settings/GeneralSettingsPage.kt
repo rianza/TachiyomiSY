@@ -33,11 +33,15 @@ private val flashColors = listOf(
 @Composable
 internal fun ColumnScope.GeneralPage(screenModel: ReaderSettingsScreenModel) {
     val readerTheme by screenModel.preferences.readerTheme().collectAsState()
+
     val flashPageState by screenModel.preferences.flashOnPageChange().collectAsState()
+
     val flashMillisPref = screenModel.preferences.flashDurationMillis()
     val flashMillis by flashMillisPref.collectAsState()
+
     val flashIntervalPref = screenModel.preferences.flashPageInterval()
     val flashInterval by flashIntervalPref.collectAsState()
+
     val flashColorPref = screenModel.preferences.flashColor()
     val flashColor by flashColorPref.collectAsState()
 
@@ -47,17 +51,6 @@ internal fun ColumnScope.GeneralPage(screenModel: ReaderSettingsScreenModel) {
                 selected = readerTheme == value,
                 onClick = { screenModel.preferences.readerTheme().set(value) },
                 label = { Text(stringResource(labelRes)) },
-            )
-        }
-    }
-
-    val imageQuality by screenModel.preferences.imageQuality().collectAsState()
-    SettingsChipRow(MR.strings.pref_image_quality) {
-        ReaderPreferences.ImageQuality.entries.map {
-            FilterChip(
-                selected = imageQuality == it,
-                onClick = { screenModel.preferences.imageQuality().set(it) },
-                label = { Text(stringResource(it.stringRes)) },
             )
         }
     }
