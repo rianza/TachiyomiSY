@@ -83,6 +83,8 @@ class ReaderPreferences(
 
     fun webtoonDisableZoomOut() = preferenceStore.getBoolean("webtoon_disable_zoom_out", false)
 
+    fun imageQuality() = preferenceStore.getEnum("pref_image_quality", ImageQuality.DEFAULT)
+
     // endregion
 
     // region Split two page spread
@@ -187,6 +189,12 @@ class ReaderPreferences(
 
     fun markReadDupe() = preferenceStore.getBoolean("mark_read_dupe", false)
     // SY <--
+
+    enum class ImageQuality(val dpi: Int, val stringRes: StringResource) {
+        DEFAULT(180, MR.strings.image_quality_default),
+        HIGH(240, MR.strings.image_quality_high),
+        HIGHEST(320, MR.strings.image_quality_highest),
+    }
 
     enum class FlashColor {
         BLACK,

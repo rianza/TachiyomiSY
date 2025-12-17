@@ -458,7 +458,11 @@
     <string name="scale_type_smart_fit">Smart fit</string>
     <string name="pref_navigate_pan">Pan wide images</string>
     <string name="pref_landscape_zoom">Automatically zoom into wide images</string>
+    <string name="pref_image_quality">Image quality</string>
     <string name="pref_zoom_start">Zoom start position</string>
+    <string name="image_quality_default">Default</string>
+    <string name="image_quality_high">High</string>
+    <string name="image_quality_highest">Highest</string>
     <string name="zoom_start_automatic">Automatic</string>
     <string name="zoom_start_left">Left</string>
     <string name="zoom_start_right">Right</string>

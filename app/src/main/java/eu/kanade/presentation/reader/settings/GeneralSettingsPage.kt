@@ -55,6 +55,17 @@ internal fun ColumnScope.GeneralPage(screenModel: ReaderSettingsScreenModel) {
         }
     }
 
+    val imageQuality by screenModel.preferences.imageQuality().collectAsState()
+    SettingsChipRow(MR.strings.pref_image_quality) {
+        ReaderPreferences.ImageQuality.entries.map {
+            FilterChip(
+                selected = imageQuality == it,
+                onClick = { screenModel.preferences.imageQuality().set(it) },
+                label = { Text(stringResource(it.stringRes)) },
+            )
+        }
+    }
+
     CheckboxItem(
         label = stringResource(MR.strings.pref_show_page_number),
         pref = screenModel.preferences.showPageNumber(),
