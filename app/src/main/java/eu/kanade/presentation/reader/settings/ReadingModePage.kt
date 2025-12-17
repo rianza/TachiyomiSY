@@ -191,6 +191,17 @@ private fun ColumnScope.WebtoonViewerSettings(screenModel: ReaderSettingsScreenM
         onSelectInvertMode = screenModel.preferences.webtoonNavInverted()::set,
     )
 
+    val webtoonImageScaleType by screenModel.preferences.webtoonImageScaleType().collectAsState()
+    SettingsChipRow(MR.strings.pref_image_scale_type) {
+        ReaderPreferences.ImageScaleType.mapIndexed { index, it ->
+            FilterChip(
+                selected = webtoonImageScaleType == index + 1,
+                onClick = { screenModel.preferences.webtoonImageScaleType().set(index + 1) },
+                label = { Text(stringResource(it)) },
+            )
+        }
+    }
+
     val webtoonSidePadding by screenModel.preferences.webtoonSidePadding().collectAsState()
     SliderItem(
         value = webtoonSidePadding,
