@@ -54,13 +54,25 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         val dstWidth = options.size.widthPx(options.scale) { srcWidth }
         val dstHeight = options.size.heightPx(options.scale) { srcHeight }
 
-        val sampleSize = DecodeUtils.calculateInSampleSize(
-            srcWidth = srcWidth,
-            srcHeight = srcHeight,
-            dstWidth = dstWidth,
-            dstHeight = dstHeight,
-            scale = options.scale,
-        )
+        val isLongStrip = srcHeight > srcWidth * 3
+
+        val sampleSize = if (isLongStrip) {
+            DecodeUtils.calculateInSampleSize(
+                srcWidth = srcWidth,
+                srcHeight = srcHeight,
+                dstWidth = dstWidth,
+                dstHeight = srcHeight,
+                scale = options.scale,
+            )
+        } else {
+            DecodeUtils.calculateInSampleSize(
+                srcWidth = srcWidth,
+                srcHeight = srcHeight,
+                dstWidth = dstWidth,
+                dstHeight = dstHeight,
+                scale = options.scale,
+            )
+        }
 
         var bitmap = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
@@ -69,7 +81,7 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
 
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            options.bitmapConfig == Bitmap.Config.HARDWARE &&
+            (options.bitmapConfig == Bitmap.Config.HARDWARE || options.bitmapConfig == null) && 
             ImageUtil.canUseHardwareBitmap(bitmap)
         ) {
             val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
