@@ -26,10 +26,10 @@ class WebtoonConfig(
 
     var themeChangedListener: (() -> Unit)? = null
 
-    var imageScaleType = 0
+    var imageCropBorders = false
         private set
 
-    var imageCropBorders = false
+    var imageScaleType = 1
         private set
 
     var zoomOutDisabled = false
@@ -55,11 +55,11 @@ class WebtoonConfig(
 
     // SY <--
     init {
-        readerPreferences.webtoonImageScaleType()
-            .register({ imageScaleType = it }, { imagePropertyChangedListener?.invoke() })
-
         readerPreferences.cropBordersWebtoon()
             .register({ imageCropBorders = it }, { imagePropertyChangedListener?.invoke() })
+
+        readerPreferences.webtoonScaleType()
+            .register({ imageScaleType = it }, { imagePropertyChangedListener?.invoke() })
 
         readerPreferences.webtoonSidePadding()
             .register({ sidePadding = it }, { imagePropertyChangedListener?.invoke() })

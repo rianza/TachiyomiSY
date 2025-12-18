@@ -55,7 +55,7 @@ class ReaderPreferences(
 
     fun imageScaleType() = preferenceStore.getInt("pref_image_scale_type_key", 1)
 
-    fun webtoonImageScaleType() = preferenceStore.getInt("pref_webtoon_image_scale_type_key", 3)
+    fun webtoonScaleType() = preferenceStore.getInt("pref_webtoon_image_scale_type_key", 3)
 
     fun zoomStart() = preferenceStore.getInt("pref_zoom_start_key", 1)
 
