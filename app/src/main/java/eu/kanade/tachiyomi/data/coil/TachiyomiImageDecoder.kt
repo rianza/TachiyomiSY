@@ -51,8 +51,12 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         val srcWidth = decoder.width
         val srcHeight = decoder.height
 
-        val dstWidth = options.size.widthPx(options.scale) { srcWidth }
-        val dstHeight = options.size.heightPx(options.scale) { srcHeight }
+        var dstWidth = options.size.widthPx(options.scale) { srcWidth }
+        var dstHeight = options.size.heightPx(options.scale) { srcHeight }
+
+        if (srcHeight > srcWidth * 3) {
+            dstHeight = srcHeight
+        }
 
         val sampleSize = DecodeUtils.calculateInSampleSize(
             srcWidth = srcWidth,
@@ -69,7 +73,7 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
 
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            options.bitmapConfig == Bitmap.Config.HARDWARE &&
+            (options.bitmapConfig == Bitmap.Config.HARDWARE || options.bitmapConfig == null) &&
             ImageUtil.canUseHardwareBitmap(bitmap)
         ) {
             val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
