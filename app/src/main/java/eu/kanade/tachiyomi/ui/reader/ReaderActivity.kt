@@ -1314,19 +1314,27 @@ class ReaderActivity : BaseActivity() {
          * Sets the display profile to [path].
          */
         private fun setDisplayProfile(path: String) {
-            val file = UniFile.fromUri(baseContext, path.toUri())
-            if (file != null && file.exists()) {
-                val inputStream = file.openInputStream()
-                val outputStream = ByteArrayOutputStream()
-                inputStream.use { input ->
-                    outputStream.use { output ->
-                        input.copyTo(output)
+            var data: ByteArray? = null
+            if (path.isNotEmpty()) {
+                val file = UniFile.fromUri(baseContext, path.toUri())
+                if (file != null && file.exists()) {
+                    try {
+                        file.openInputStream().use { inputStream ->
+                            ByteArrayOutputStream().use { outputStream ->
+                                inputStream.copyTo(outputStream)
+                                if (outputStream.size() > 0) {
+                                    data = outputStream.toByteArray()
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        logcat(LogPriority.ERROR, e) { "Failed to read display profile" }
+                        data = null
                     }
                 }
-                val data = outputStream.toByteArray()
-                SubsamplingScaleImageView.setDisplayProfile(data)
-                TachiyomiImageDecoder.displayProfile = data
             }
+            SubsamplingScaleImageView.setDisplayProfile(data)
+            TachiyomiImageDecoder.displayProfile = data
         }
 
         private fun setCutoutShort(enabled: Boolean) {
