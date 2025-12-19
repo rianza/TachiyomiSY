@@ -20,6 +20,7 @@ import androidx.work.WorkManager
 import coil3.ImageLoader
 import coil3.SingletonImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.allowHardware
 import coil3.request.allowRgb565
 import coil3.request.crossfade
 import coil3.util.DebugLogger
@@ -249,7 +250,8 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             }
 
             crossfade((300 * this@App.animatorDurationScale).toInt())
-            allowRgb565(DeviceUtil.isLowRamDevice(this@App))
+            allowHardware(false)
+            allowRgb565(false)
             if (networkPreferences.verboseLogging().get()) logger(DebugLogger())
 
             // Coil spawns a new thread for every image load by default
