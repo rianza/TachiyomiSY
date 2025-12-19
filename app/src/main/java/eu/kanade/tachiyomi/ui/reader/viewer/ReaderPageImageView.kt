@@ -69,13 +69,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
     private var config: Config? = null
 
     var onImageLoaded: (() -> Unit)? = null
-    var onImageLoadError: ((Throwable?) -> Unit)? = null
+    var onImageLoadError: (() -> Unit)? = null
     var onScaleChanged: ((newScale: Float) -> Unit)? = null
     var onViewClicked: (() -> Unit)? = null
 
-    /**
-     * For automatic background. Will be set as background color when [onImageLoaded] is called.
-     */
     var pageBackground: Drawable? = null
 
     @CallSuper
@@ -85,8 +82,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
     }
 
     @CallSuper
-    open fun onImageLoadError(error: Throwable?) {
-        onImageLoadError?.invoke(error)
+    open fun onImageLoadError() {
+        onImageLoadError?.invoke()
     }
 
     @CallSuper
@@ -114,7 +111,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                         }
 
                         override fun onImageLoadError(e: Exception) {
-                            onImageLoadError(e)
+                            onImageLoadError()
                         }
                     },
                 )
@@ -177,20 +174,10 @@ open class ReaderPageImageView @JvmOverloads constructor(
         it.isVisible = false
     }
 
-    /**
-     * Check if the image can be panned to the left
-     */
     fun canPanLeft(): Boolean = canPan { it.left }
 
-    /**
-     * Check if the image can be panned to the right
-     */
     fun canPanRight(): Boolean = canPan { it.right }
 
-    /**
-     * Check whether the image can be panned.
-     * @param fn a function that returns the direction to check for
-     */
     private fun canPan(fn: (RectF) -> Float): Boolean {
         (pageView as? SubsamplingScaleImageView)?.let { view ->
             RectF().let {
@@ -201,24 +188,14 @@ open class ReaderPageImageView @JvmOverloads constructor(
         return false
     }
 
-    /**
-     * Pans the image to the left by a screen's width worth.
-     */
     fun panLeft() {
         pan { center, view -> center.also { it.x -= view.width / view.scale } }
     }
 
-    /**
-     * Pans the image to the right by a screen's width worth.
-     */
     fun panRight() {
         pan { center, view -> center.also { it.x += view.width / view.scale } }
     }
 
-    /**
-     * Pans the image.
-     * @param fn a function that computes the new center of the image
-     */
     private fun pan(fn: (PointF, SubsamplingScaleImageView) -> PointF) {
         (pageView as? SubsamplingScaleImageView)?.let { view ->
 
@@ -243,7 +220,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
             setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
-            setMinimumTileDpi(180)
+            setMinimumTileDpi(220)
+            setPreferredBitmapConfig(Bitmap.Config.ARGB_8888)
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
@@ -261,7 +239,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
     }
 
     private fun SubsamplingScaleImageView.setupZoom(config: Config?) {
-        // 5x zoom
         maxScale = scale * MAX_ZOOM_SCALE
         setDoubleTapZoomScale(scale * 2)
 
@@ -279,8 +256,9 @@ open class ReaderPageImageView @JvmOverloads constructor(
     ) = (pageView as? SubsamplingScaleImageView)?.apply {
         setDoubleTapZoomDuration(config.zoomDuration.getSystemScaledDuration())
         setMinimumScaleType(config.minimumScaleType)
-        setMinimumDpi(1) // Just so that very small image will be fit for initial load
+        setMinimumDpi(1)
         setCropBorders(config.cropBorders)
+        setPreferredBitmapConfig(Bitmap.Config.ARGB_8888)
         setOnImageEventListener(
             object : SubsamplingScaleImageView.DefaultOnImageEventListener() {
                 override fun onReady() {
@@ -290,7 +268,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 }
 
                 override fun onImageLoadError(e: Exception) {
-                    this@ReaderPageImageView.onImageLoadError(e)
+                    this@ReaderPageImageView.onImageLoadError()
                 }
             },
         )
@@ -302,7 +280,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             }
             is BufferedSource -> {
                 if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                    setHardwareConfig(false)
                     setImage(ImageSource.inputStream(data.inputStream()))
                     isVisible = true
                     return@apply
@@ -318,14 +296,13 @@ open class ReaderPageImageView @JvmOverloads constructor(
                             setImage(ImageSource.bitmap(image.bitmap))
                             isVisible = true
                         },
-                    )
-                    .listener(
-                        onError = { _, result ->
-                            onImageLoadError(result.throwable)
+                        onError = {
+                            onImageLoadError()
                         },
                     )
                     .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
+                    .precision(Precision.EXACT)
+                    .allowHardware(false)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
                     .crossfade(false)
@@ -351,7 +328,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
 
             if (this is PhotoView) {
                 setScaleLevels(1F, 2F, MAX_ZOOM_SCALE)
-                // Force 2 scale levels on double tap
                 setOnDoubleTapListener(
                     object : GestureDetector.SimpleOnGestureListener() {
                         override fun onDoubleTap(e: MotionEvent): Boolean {
@@ -389,6 +365,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             .data(data)
             .memoryCachePolicy(CachePolicy.DISABLED)
             .diskCachePolicy(CachePolicy.DISABLED)
+            .allowHardware(false)
             .target(
                 onSuccess = { result ->
                     val drawable = result.asDrawable(context.resources)
@@ -397,10 +374,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     isVisible = true
                     this@ReaderPageImageView.onImageLoaded()
                 },
-            )
-            .listener(
-                onError = { _, result ->
-                    onImageLoadError(result.throwable)
+                onError = {
+                    this@ReaderPageImageView.onImageLoadError()
                 },
             )
             .crossfade(false)
@@ -412,9 +387,6 @@ open class ReaderPageImageView @JvmOverloads constructor(
         return (this * context.animatorDurationScale).toInt().coerceAtLeast(1)
     }
 
-    /**
-     * All of the config except [zoomDuration] will only be used for non-animated image.
-     */
     data class Config(
         val zoomDuration: Int,
         val minimumScaleType: Int = SCALE_TYPE_CENTER_INSIDE,
