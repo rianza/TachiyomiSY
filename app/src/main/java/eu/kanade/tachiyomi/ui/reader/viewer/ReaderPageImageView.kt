@@ -81,7 +81,12 @@ open class ReaderPageImageView @JvmOverloads constructor(
     @CallSuper
     open fun onImageLoaded() {
         onImageLoaded?.invoke()
-        background = pageBackground
+
+        if (isWebtoon) {
+            background = null
+        } else {
+            background = pageBackground
+        }
     }
 
     @CallSuper
@@ -242,8 +247,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
         }.apply {
             setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
-            setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
-            setMinimumTileDpi(180)
+
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
@@ -279,8 +283,18 @@ open class ReaderPageImageView @JvmOverloads constructor(
     ) = (pageView as? SubsamplingScaleImageView)?.apply {
         setDoubleTapZoomDuration(config.zoomDuration.getSystemScaledDuration())
         setMinimumScaleType(config.minimumScaleType)
-        setMinimumDpi(1) // Just so that very small image will be fit for initial load
         setCropBorders(config.cropBorders)
+        setMinimumDpi(1) 
+
+        if (isWebtoon) {
+            setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_CENTER)
+            setMinimumTileDpi(160) 
+            setDebug(false)
+        } else {
+            setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
+            setMinimumTileDpi(180)
+        }
+
         setOnImageEventListener(
             object : SubsamplingScaleImageView.DefaultOnImageEventListener() {
                 override fun onReady() {
@@ -301,9 +315,19 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 isVisible = true
             }
             is BufferedSource -> {
-                if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
-                    setImage(ImageSource.inputStream(data.inputStream()))
+                val type = ImageUtil.findImageType(data.peek().inputStream())
+
+                val isSafeForDirectSSIV = when (type) {
+                    ImageUtil.ImageType.JPEG,
+                    ImageUtil.ImageType.PNG,
+                    ImageUtil.ImageType.WEBP,
+                    ImageUtil.ImageType.HEIF -> true
+                    else -> false 
+                }
+
+                if (isSafeForDirectSSIV) {
+                    setHardwareConfig(false)
+                    setImage(ImageSource.inputStream(data.inputStream())
                     isVisible = true
                     return@apply
                 }
@@ -324,8 +348,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                             onImageLoadError(result.throwable)
                         },
                     )
-                    .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
+                    .precision(Precision.EXACT)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
                     .crossfade(false)
