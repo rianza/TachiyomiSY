@@ -67,15 +67,12 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
 
         check(bitmap != null) { "Failed to decode image" }
 
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            options.bitmapConfig == Bitmap.Config.HARDWARE &&
-            ImageUtil.canUseHardwareBitmap(bitmap)
-        ) {
-            val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
-            if (hwBitmap != null) {
+        // FIX FOR REALME/ADRENO 610: Force ARGB_8888 to avoid GPU downscaling blur
+        if (bitmap.config != Bitmap.Config.ARGB_8888) {
+            val argbBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+            if (argbBitmap != null) {
                 bitmap.recycle()
-                bitmap = hwBitmap
+                bitmap = argbBitmap
             }
         }
 
