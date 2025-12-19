@@ -22,9 +22,11 @@ import tachiyomi.decoder.ImageDecoder
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.BufferedInputStream
+import kotlin.math.max
+import kotlin.math.min
 
 /**
- * A [Decoder] that uses built-in [ImageDecoder] to decode images that is not supported by the system.
+ * Decoder yang dioptimasi untuk text clarity dan memory efficiency
  */
 class TachiyomiImageDecoder(private val resources: ImageSource, private val options: Options) : Decoder {
     private val context = Injekt.get<Application>()
@@ -54,7 +56,7 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         val dstWidth = options.size.widthPx(options.scale) { srcWidth }
         val dstHeight = options.size.heightPx(options.scale) { srcHeight }
 
-        val sampleSize = DecodeUtils.calculateInSampleSize(
+        val rawSampleSize = DecodeUtils.calculateInSampleSize(
             srcWidth = srcWidth,
             srcHeight = srcHeight,
             dstWidth = dstWidth,
@@ -62,16 +64,23 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
             scale = options.scale,
         )
 
+        val isLongStrip = srcHeight > srcWidth * 2
+        val maxAllowedSampleSize = if (isLongStrip) 2 else 4
+        val sampleSize = min(rawSampleSize, maxAllowedSampleSize).coerceAtLeast(1)
+
         var bitmap = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
 
         check(bitmap != null) { "Failed to decode image" }
 
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        val shouldUseHardwareBitmap = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             options.bitmapConfig == Bitmap.Config.HARDWARE &&
-            ImageUtil.canUseHardwareBitmap(bitmap)
-        ) {
+            ImageUtil.canUseHardwareBitmap(bitmap) &&
+            !isLongStrip &&
+            bitmap.width <= SAFE_HARDWARE_BITMAP_SIZE &&
+            bitmap.height <= SAFE_HARDWARE_BITMAP_SIZE
+
+        if (shouldUseHardwareBitmap) {
             val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
             if (hwBitmap != null) {
                 bitmap.recycle()
@@ -118,5 +127,7 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
 
     companion object {
         var displayProfile: ByteArray? = null
+
+        private const val SAFE_HARDWARE_BITMAP_SIZE = 4096
     }
 }
