@@ -1,10 +1,12 @@
 package eu.kanade.tachiyomi.ui.reader.viewer
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.GestureDetector
@@ -45,12 +47,8 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
 /**
- * A wrapper view for showing page image.
- *
- * Animated image will be drawn by [PhotoView] while [SubsamplingScaleImageView] will take non-animated image.
- *
- * @param isWebtoon if true, [WebtoonSubsamplingImageView] will be used instead of [SubsamplingScaleImageView]
- * and [AppCompatImageView] will be used instead of [PhotoView]
+ * Optimized wrapper view for displaying manga/webtoon pages
+ * with good text clarity and no flicker
  */
 open class ReaderPageImageView @JvmOverloads constructor(
     context: Context,
@@ -68,6 +66,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
 
     private var config: Config? = null
 
+    private val defaultBackground = ColorDrawable(Color.TRANSPARENT)
+
     var onImageLoaded: (() -> Unit)? = null
     var onImageLoadError: ((Throwable?) -> Unit)? = null
     var onScaleChanged: ((newScale: Float) -> Unit)? = null
@@ -78,10 +78,19 @@ open class ReaderPageImageView @JvmOverloads constructor(
      */
     var pageBackground: Drawable? = null
 
+    init {
+        // Set default background immediately to prevent black flash
+        background = defaultBackground
+        // Disable hardware acceleration on this view untuk stability
+        setLayerType(LAYER_TYPE_NONE, null)
+    }
+
     @CallSuper
     open fun onImageLoaded() {
         onImageLoaded?.invoke()
-        background = pageBackground
+        post {
+            background = pageBackground ?: defaultBackground
+        }
     }
 
     @CallSuper
@@ -174,9 +183,12 @@ open class ReaderPageImageView @JvmOverloads constructor(
             is SubsamplingScaleImageView -> it.recycle()
             is AppCompatImageView -> it.dispose()
         }
-        it.isVisible = false
-    }
 
+        if (it is AppCompatImageView) {
+            it.setImageDrawable(null)
+        }
+    }
+    
     /**
      * Check if the image can be panned to the left
      */
@@ -240,10 +252,11 @@ open class ReaderPageImageView @JvmOverloads constructor(
         } else {
             SubsamplingScaleImageView(context)
         }.apply {
-            setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
+            setMaxTileSize(getOptimalMaxTileSize())
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
-            setMinimumTileDpi(180)
+            setMinimumTileDpi(if (isWebtoon) 260 else 220)
+
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
@@ -256,8 +269,21 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 },
             )
             setOnClickListener { this@ReaderPageImageView.onViewClicked() }
+            isVisible = true
         }
         addView(pageView, MATCH_PARENT, MATCH_PARENT)
+    }
+
+    /**
+     * Get optimal tile size based on device capability
+     */
+    private fun getOptimalMaxTileSize(): Int {
+        val threshold = ImageUtil.hardwareBitmapThreshold
+        return when {
+            threshold >= 8192 -> 2048  // High-end device
+            threshold >= 4096 -> 1536  // Mid-range device
+            else -> 1024               // Low-end device
+        }
     }
 
     private fun SubsamplingScaleImageView.setupZoom(config: Config?) {
@@ -281,6 +307,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
         setMinimumScaleType(config.minimumScaleType)
         setMinimumDpi(1) // Just so that very small image will be fit for initial load
         setCropBorders(config.cropBorders)
+
         setOnImageEventListener(
             object : SubsamplingScaleImageView.DefaultOnImageEventListener() {
                 override fun onReady() {
@@ -302,7 +329,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
             }
             is BufferedSource -> {
                 if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                    setHardwareConfig(shouldUseHardwareConfig(data))
                     setImage(ImageSource.inputStream(data.inputStream()))
                     isVisible = true
                     return@apply
@@ -325,7 +352,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                         },
                     )
                     .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
+                    .precision(Precision.EXACT)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
                     .crossfade(false)
@@ -336,6 +363,15 @@ open class ReaderPageImageView @JvmOverloads constructor(
                 throw IllegalArgumentException("Not implemented for class ${data::class.simpleName}")
             }
         }
+    }
+
+    /**
+     * Determines whether to use the hardware configuration.
+     * Disable for webtoon to make the text clearer.
+     */
+    private fun shouldUseHardwareConfig(data: BufferedSource): Boolean {
+        if (isWebtoon) return false
+        return ImageUtil.canUseHardwareBitmap(data)
     }
 
     private fun prepareAnimatedImageView() {
@@ -373,6 +409,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     this@ReaderPageImageView.onScaleChanged(scale)
                 }
             }
+            isVisible = true
         }
         addView(pageView, MATCH_PARENT, MATCH_PARENT)
     }
