@@ -23,6 +23,7 @@ import coil3.asDrawable
 import coil3.dispose
 import coil3.imageLoader
 import coil3.request.CachePolicy
+import coil3.request.allowHardware
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Precision
@@ -325,7 +326,7 @@ open class ReaderPageImageView @JvmOverloads constructor(
                         },
                     )
                     .size(ViewSizeResolver(this@ReaderPageImageView))
-                    .precision(Precision.INEXACT)
+                    .precision(Precision.EXACT)
                     .cropBorders(config.cropBorders)
                     .customDecoder(true)
                     .crossfade(false)
@@ -403,6 +404,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
                     onImageLoadError(result.throwable)
                 },
             )
+            .precision(Precision.EXACT)
+            .allowHardware(false) // Disable hardware bitmaps for GIFs
             .crossfade(false)
             .build()
         context.imageLoader.enqueue(request)
