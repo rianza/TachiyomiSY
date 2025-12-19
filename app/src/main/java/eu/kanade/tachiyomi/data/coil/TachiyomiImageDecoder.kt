@@ -22,9 +22,12 @@ import tachiyomi.decoder.ImageDecoder
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.BufferedInputStream
+import kotlin.math.min
 
 /**
- * A [Decoder] that uses built-in [ImageDecoder] to decode images that is not supported by the system.
+ * Hybrid decoder: 
+ * - Manga normal → Hardware Bitmap (gambar smooth)
+ * - Webtoon/Long strip → Software Bitmap (text jelas)
  */
 class TachiyomiImageDecoder(private val resources: ImageSource, private val options: Options) : Decoder {
     private val context = Injekt.get<Application>()
@@ -54,7 +57,8 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         val dstWidth = options.size.widthPx(options.scale) { srcWidth }
         val dstHeight = options.size.heightPx(options.scale) { srcHeight }
 
-        val sampleSize = DecodeUtils.calculateInSampleSize(
+        val isLongStrip = srcHeight > srcWidth * 2
+        val rawSampleSize = DecodeUtils.calculateInSampleSize(
             srcWidth = srcWidth,
             srcHeight = srcHeight,
             dstWidth = dstWidth,
@@ -62,16 +66,23 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
             scale = options.scale,
         )
 
+        val sampleSize = if (isLongStrip) {
+            min(rawSampleSize, 2)
+        } else {
+            rawSampleSize
+        }
+
         var bitmap = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
 
         check(bitmap != null) { "Failed to decode image" }
 
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+        val shouldUseHardwareBitmap = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
             options.bitmapConfig == Bitmap.Config.HARDWARE &&
-            ImageUtil.canUseHardwareBitmap(bitmap)
-        ) {
+            ImageUtil.canUseHardwareBitmap(bitmap) &&
+            !isLongStrip
+
+        if (shouldUseHardwareBitmap) {
             val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
             if (hwBitmap != null) {
                 bitmap.recycle()
