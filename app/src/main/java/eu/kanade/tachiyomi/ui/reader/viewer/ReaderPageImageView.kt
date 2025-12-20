@@ -243,7 +243,8 @@ open class ReaderPageImageView @JvmOverloads constructor(
             setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
-            setMinimumTileDpi(180)
+            val metrics = context.resources.displayMetrics
+            setMinimumTileDpi(metrics.densityDpi)
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
@@ -302,7 +303,13 @@ open class ReaderPageImageView @JvmOverloads constructor(
             }
             is BufferedSource -> {
                 if (!isWebtoon || alwaysDecodeLongStripWithSSIV) {
-                    setHardwareConfig(ImageUtil.canUseHardwareBitmap(data))
+                    val useHardware = if (isWebtoon) {
+                         false 
+                    } else {
+                        ImageUtil.canUseHardwareBitmap(data)
+                    }
+
+                    setHardwareConfig(useHardware)
                     setImage(ImageSource.inputStream(data.inputStream()))
                     isVisible = true
                     return@apply
