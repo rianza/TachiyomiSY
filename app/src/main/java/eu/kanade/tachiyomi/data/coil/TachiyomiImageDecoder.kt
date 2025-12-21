@@ -67,15 +67,12 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
 
         check(bitmap != null) { "Failed to decode image" }
 
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            options.bitmapConfig == Bitmap.Config.HARDWARE &&
-            ImageUtil.canUseHardwareBitmap(bitmap)
-        ) {
-            val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
-            if (hwBitmap != null) {
+        val targetConfig = options.bitmapConfig
+        if (bitmap.config != targetConfig) {
+            val newBitmap = bitmap.copy(targetConfig, false)
+            if (newBitmap != null) {
                 bitmap.recycle()
-                bitmap = hwBitmap
+                bitmap = newBitmap
             }
         }
 
