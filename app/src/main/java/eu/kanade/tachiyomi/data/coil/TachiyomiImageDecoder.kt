@@ -15,6 +15,7 @@ import coil3.request.bitmapConfig
 import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.util.storage.CbzCrypto
 import eu.kanade.tachiyomi.util.storage.CbzCrypto.getCoverStream
+import eu.kanade.tachiyomi.util.system.GLUtil
 import mihon.core.common.archive.archiveReader
 import okio.BufferedSource
 import tachiyomi.core.common.util.system.ImageUtil
@@ -54,13 +55,19 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         val dstWidth = options.size.widthPx(options.scale) { srcWidth }
         val dstHeight = options.size.heightPx(options.scale) { srcHeight }
 
-        val sampleSize = DecodeUtils.calculateInSampleSize(
+        var sampleSize = DecodeUtils.calculateInSampleSize(
             srcWidth = srcWidth,
             srcHeight = srcHeight,
             dstWidth = dstWidth,
             dstHeight = dstHeight,
             scale = options.scale,
         )
+
+        val textureLimit = GLUtil.DEVICE_TEXTURE_LIMIT 
+
+        if (sampleSize > 1 && srcWidth <= textureLimit && srcHeight <= textureLimit) {
+            sampleSize = 1
+        }
 
         var bitmap = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
@@ -86,7 +93,6 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
     }
 
     class Factory : Decoder.Factory {
-
         override fun create(result: SourceFetchResult, options: Options, imageLoader: ImageLoader): Decoder? {
             return if (options.customDecoder || isApplicable(result.source.source())) {
                 TachiyomiImageDecoder(result.source, options)
