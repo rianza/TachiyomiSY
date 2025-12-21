@@ -226,7 +226,7 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
     }
 
     override fun newImageLoader(context: Context): ImageLoader {
-        return ImageLoader.Builder(this).apply {
+        return ImageLoader.Builder(context).apply {
             val callFactoryLazy = lazy { Injekt.get<NetworkHelper>().client }
             components {
                 // NetworkFetcher.Factory
@@ -249,7 +249,7 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             }
 
             crossfade((300 * this@App.animatorDurationScale).toInt())
-            allowRgb565(DeviceUtil.isLowRamDevice(this@App))
+            allowRgb565(false)
             if (networkPreferences.verboseLogging().get()) logger(DebugLogger())
 
             // Coil spawns a new thread for every image load by default
