@@ -67,15 +67,24 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
 
         check(bitmap != null) { "Failed to decode image" }
 
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            options.bitmapConfig == Bitmap.Config.HARDWARE &&
-            ImageUtil.canUseHardwareBitmap(bitmap)
-        ) {
-            val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
-            if (hwBitmap != null) {
-                bitmap.recycle()
-                bitmap = hwBitmap
+        if (!isWebtoon) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
+                options.bitmapConfig == Bitmap.Config.HARDWARE &&
+                ImageUtil.canUseHardwareBitmap(bitmap)
+            ) {
+                val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
+                if (hwBitmap != null) {
+                    bitmap.recycle()
+                    bitmap = hwBitmap
+                }
+            }
+        } else {
+            if (bitmap.config != Bitmap.Config.ARGB_8888) {
+                val sharpBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                if (sharpBitmap != null) {
+                    bitmap.recycle()
+                    bitmap = sharpBitmap
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.ui.reader.viewer
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.RectF
 import android.graphics.drawable.Animatable
@@ -243,7 +244,17 @@ open class ReaderPageImageView @JvmOverloads constructor(
             setMaxTileSize(ImageUtil.hardwareBitmapThreshold)
             setDoubleTapZoomStyle(SubsamplingScaleImageView.ZOOM_FOCUS_CENTER)
             setPanLimit(SubsamplingScaleImageView.PAN_LIMIT_INSIDE)
-            setMinimumTileDpi(180)
+
+            if (isWebtoon) {
+                setMinimumTileDpi(240)
+                setBitmapConfig(Bitmap.Config.ARGB_8888)
+                paint.isFilterBitmap = false
+            } else {
+                setMinimumTileDpi(180)
+                setBitmapConfig(Bitmap.Config.HARDWARE)
+                paint.isFilterBitmap = true
+            }
+
             setOnStateChangedListener(
                 object : SubsamplingScaleImageView.OnStateChangedListener {
                     override fun onScaleChanged(newScale: Float, origin: Int) {
