@@ -15,6 +15,7 @@ import coil3.request.bitmapConfig
 import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.util.storage.CbzCrypto
 import eu.kanade.tachiyomi.util.storage.CbzCrypto.getCoverStream
+import eu.kanade.tachiyomi.util.system.GLUtil
 import mihon.core.common.archive.archiveReader
 import okio.BufferedSource
 import tachiyomi.core.common.util.system.ImageUtil
@@ -23,9 +24,6 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.BufferedInputStream
 
-/**
- * A [Decoder] that uses built-in [ImageDecoder] to decode images that is not supported by the system.
- */
 class TachiyomiImageDecoder(private val resources: ImageSource, private val options: Options) : Decoder {
     private val context = Injekt.get<Application>()
 
@@ -54,13 +52,18 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         val dstWidth = options.size.widthPx(options.scale) { srcWidth }
         val dstHeight = options.size.heightPx(options.scale) { srcHeight }
 
-        val sampleSize = DecodeUtils.calculateInSampleSize(
+        var sampleSize = DecodeUtils.calculateInSampleSize(
             srcWidth = srcWidth,
             srcHeight = srcHeight,
             dstWidth = dstWidth,
             dstHeight = dstHeight,
             scale = options.scale,
         )
+
+        val textureLimit = GLUtil.DEVICE_TEXTURE_LIMIT
+        if (sampleSize > 1 && srcWidth <= textureLimit && srcHeight <= textureLimit) {
+            sampleSize = 1
+        }
 
         var bitmap = decoder.decode(sampleSize = sampleSize)
         decoder.recycle()
@@ -72,10 +75,20 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
             options.bitmapConfig == Bitmap.Config.HARDWARE &&
             ImageUtil.canUseHardwareBitmap(bitmap)
         ) {
-            val hwBitmap = bitmap.copy(Bitmap.Config.HARDWARE, false)
-            if (hwBitmap != null) {
+            val softwareBitmap = if (bitmap.config != Bitmap.Config.ARGB_8888) {
+                val argb = bitmap.copy(Bitmap.Config.ARGB_8888, true)
                 bitmap.recycle()
+                argb
+            } else {
+                bitmap
+            }
+
+            val hwBitmap = softwareBitmap.copy(Bitmap.Config.HARDWARE, false)
+            if (hwBitmap != null) {
+                softwareBitmap.recycle()
                 bitmap = hwBitmap
+            } else {
+                bitmap = softwareBitmap
             }
         }
 
@@ -86,7 +99,6 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
     }
 
     class Factory : Decoder.Factory {
-
         override fun create(result: SourceFetchResult, options: Options, imageLoader: ImageLoader): Decoder? {
             return if (options.customDecoder || isApplicable(result.source.source())) {
                 TachiyomiImageDecoder(result.source, options)
@@ -112,7 +124,6 @@ class TachiyomiImageDecoder(private val resources: ImageSource, private val opti
         }
 
         override fun equals(other: Any?) = other is Factory
-
         override fun hashCode() = javaClass.hashCode()
     }
 
