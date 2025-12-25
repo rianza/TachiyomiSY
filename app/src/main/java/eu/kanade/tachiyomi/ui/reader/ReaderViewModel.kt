@@ -338,84 +338,80 @@ class ReaderViewModel @JvmOverloads constructor(
      * Initializes this presenter with the given [mangaId] and [initialChapterId]. This method will
      * fetch the manga from the database and initialize the initial chapter.
      */
-    suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
-        if (!needsInit()) return Result.success(true)
+    suspend fun init(
+        mangaId: Long,
+        initialChapterId: Long,
+        page: Int? = null,
+    ): Result<Boolean> {
+        if (state.value.viewerChapters != null) {
+            return Result.success(true)
+        }
+
         return withIOContext {
             try {
-                val manga = getManga.await(mangaId)
-                if (manga != null) {
-                    // SY -->
-                    sourceManager.isInitialized.first { it }
-                    val source = sourceManager.getOrStub(manga.source)
-                    val metadataSource = source.getMainSource<MetadataSource<*, *>>()
-                    val metadata = if (metadataSource != null) {
-                        getFlatMetadataById.await(mangaId)?.raise(metadataSource.metaClass)
-                    } else {
-                        null
-                    }
-                    val mergedReferences = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedReferencesById.await(manga.id)
-                        }
-                    } else {
-                        emptyList()
-                    }
-                    val mergedManga = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedMangaById.await(manga.id)
-                        }.associateBy { it.id }
-                    } else {
-                        emptyMap()
-                    }
-                    val relativeTime = uiPreferences.relativeTime().get()
-                    val autoScrollFreq = readerPreferences.autoscrollInterval().get()
-                    // SY <--
-                    mutableState.update {
-                        it.copy(
-                            manga = manga,
-                            /* SY --> */
-                            meta = metadata,
-                            mergedManga = mergedManga,
-                            dateRelativeTime = relativeTime,
-                            ehAutoscrollFreq = if (autoScrollFreq == -1f) {
-                                ""
-                            } else {
-                                autoScrollFreq.toString()
-                            },
-                            isAutoScrollEnabled = autoScrollFreq != -1f,
-                            /* SY <-- */
-                        )
-                    }
-                    if (chapterId == -1L) chapterId = initialChapterId
+                val manga = getManga.await(mangaId) ?: return@withIOContext Result.success(false)
+                // SY -->
+                sourceManager.isInitialized.first { it }
+                val source = sourceManager.getOrStub(manga.source)
+                val metadataSource = source.getMainSource<MetadataSource<*, *>>()
+                val metadata = metadataSource?.let {
+                    getFlatMetadataById.await(mangaId)?.raise(it.metaClass)
+                }
+                val mergedReferences = if (source is MergedSource) {
+                    getMergedReferencesById.await(manga.id)
+                } else emptyList()
+                val mergedManga = if (source is MergedSource) {
+                    getMergedMangaById.await(manga.id).associateBy { it.id }
+                } else emptyMap()
 
+                val relativeTime = uiPreferences.relativeTime().get()
+                val autoScrollFreq = readerPreferences.autoscrollInterval().get()
+                // SY -->
+                mutableState.update {
+                    it.copy(
+                        manga = manga,
+                        meta = metadata,
+                        mergedManga = mergedManga,
+                        dateRelativeTime = relativeTime,
+                        ehAutoscrollFreq = if (autoScrollFreq == -1f) "" else autoScrollFreq.toString(),
+                        isAutoScrollEnabled = autoScrollFreq != -1f,
+                    )
+                }
+
+                if (chapterId == -1L) chapterId = initialChapterId
+
+                if (loader == null) {
                     val context = Injekt.get<Application>()
-                    // val source = sourceManager.getOrStub(manga.source)
                     loader = ChapterLoader(
                         context = context,
                         downloadManager = downloadManager,
                         downloadProvider = downloadProvider,
                         manga = manga,
-                        source = source, /* SY --> */
+                        source = source,
                         sourceManager = sourceManager,
                         readerPrefs = readerPreferences,
                         mergedReferences = mergedReferences,
-                        mergedManga = mergedManga, /* SY <-- */
+                        mergedManga = mergedManga,
                     )
+                }
 
-                    loadChapter(
-                        loader!!,
-                        chapterList.first { chapterId == it.chapter.id },
-                        /* SY --> */page, /* SY <-- */
-                    )
-                    Result.success(true)
-                } else {
-                    // Unlikely but okay
-                    Result.success(false)
+                val targetChapter = chapterList.firstOrNull { it.chapter.id == chapterId }
+                    ?: error("Requested chapter of id $chapterId not found")
+
+                val existing = state.value.viewerChapters
+                if (existing != null && existing.currChapter.chapter.id == targetChapter.chapter.id) {
+                    targetChapter.requestedPage = page ?: chapterPageIndex
+                    return@withIOContext Result.success(true)
                 }
+
+                loadChapter(
+                    loader!!,
+                    targetChapter,
+                    page,
+                )
+                Result.success(true)
             } catch (e: Throwable) {
-                if (e is CancellationException) {
-                    throw e
-                }
+                if (e is CancellationException) throw e
                 Result.failure(e)
             }
         }
