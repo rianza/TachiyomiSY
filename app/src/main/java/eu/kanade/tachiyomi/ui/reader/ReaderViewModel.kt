@@ -61,7 +61,10 @@ import exh.util.defaultReaderType
 import exh.util.mangaType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -338,13 +341,33 @@ class ReaderViewModel @JvmOverloads constructor(
      * Initializes this presenter with the given [mangaId] and [initialChapterId]. This method will
      * fetch the manga from the database and initialize the initial chapter.
      */
-    suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
+    suspend fun init(
+        mangaId: Long,
+        initialChapterId: Long,
+        /* SY --> */
+        page: Int?
+        /* SY <-- */
+    ): Result<Boolean> {
         if (!needsInit()) return Result.success(true)
+        val targetChapterId = if (chapterId == -1L) initialChapterId else chapterId
+        val currentLoader = loader
+        val chapter = currentChapter
+
+        val isAlreadyLoaded = currentLoader != null && 
+                              chapter != null &&
+                              chapter.chapter.id == targetChapterId &&
+                              chapter.state is ReaderChapter.State.Loaded &&
+                              chapter.pages?.isNotEmpty() == true
+
+        if (isAlreadyLoaded) {
+            return Result.success(true)
+        }
+
         return withIOContext {
             try {
                 val manga = getManga.await(mangaId)
                 if (manga != null) {
-                    // SY -->
+                   // SY -->
                     sourceManager.isInitialized.first { it }
                     val source = sourceManager.getOrStub(manga.source)
                     val metadataSource = source.getMainSource<MetadataSource<*, *>>()
@@ -377,35 +400,37 @@ class ReaderViewModel @JvmOverloads constructor(
                             meta = metadata,
                             mergedManga = mergedManga,
                             dateRelativeTime = relativeTime,
-                            ehAutoscrollFreq = if (autoScrollFreq == -1f) {
-                                ""
-                            } else {
-                                autoScrollFreq.toString()
-                            },
+                            ehAutoscrollFreq = if (autoScrollFreq == -1f) "" else autoScrollFreq.toString(),
                             isAutoScrollEnabled = autoScrollFreq != -1f,
                             /* SY <-- */
                         )
                     }
-                    if (chapterId == -1L) chapterId = initialChapterId
 
+                    if (chapterId == -1L) chapterId = initialChapterId
                     val context = Injekt.get<Application>()
                     // val source = sourceManager.getOrStub(manga.source)
-                    loader = ChapterLoader(
-                        context = context,
-                        downloadManager = downloadManager,
-                        downloadProvider = downloadProvider,
-                        manga = manga,
-                        source = source, /* SY --> */
-                        sourceManager = sourceManager,
-                        readerPrefs = readerPreferences,
-                        mergedReferences = mergedReferences,
-                        mergedManga = mergedManga, /* SY <-- */
-                    )
+                    if (loader == null) {
+                        loader = ChapterLoader(
+                            context = context,
+                            downloadManager = downloadManager,
+                            downloadProvider = downloadProvider,
+                            manga = manga,
+                            source = source,
+                            /* SY --> */
+                            sourceManager = sourceManager,
+                            readerPrefs = readerPreferences,
+                            mergedReferences = mergedReferences,
+                            mergedManga = mergedManga,
+                            /* SY <-- */
+                        )
+                    }
 
                     loadChapter(
                         loader!!,
                         chapterList.first { chapterId == it.chapter.id },
-                        /* SY --> */page, /* SY <-- */
+                        /* SY --> */
+                        page,
+                        /* SY <-- */
                     )
                     Result.success(true)
                 } else {
