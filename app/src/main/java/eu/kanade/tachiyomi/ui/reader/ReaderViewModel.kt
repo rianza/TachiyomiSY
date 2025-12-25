@@ -345,31 +345,46 @@ class ReaderViewModel @JvmOverloads constructor(
                 val manga = getManga.await(mangaId)
                 if (manga != null) {
                     // SY -->
-                    sourceManager.isInitialized.first { it }
-                    val source = sourceManager.getOrStub(manga.source)
-                    val metadataSource = source.getMainSource<MetadataSource<*, *>>()
-                    val metadata = if (metadataSource != null) {
-                        getFlatMetadataById.await(mangaId)?.raise(metadataSource.metaClass)
-                    } else {
-                        null
-                    }
-                    val mergedReferences = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedReferencesById.await(manga.id)
+                    val sourceDeferred = async {
+                        sourceManager.isInitialized.first { it }
+
+                        var src = sourceManager.getOrStub(manga.source)
+
+                        if (src is SourceManager.StubSource && manga.source != LocalSource.ID && manga.source != MERGED_SOURCE_ID) {
+                            delay(150)
+                            src = sourceManager.getOrStub(manga.source)
                         }
-                    } else {
-                        emptyList()
+                        src
                     }
-                    val mergedManga = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedMangaById.await(manga.id)
-                        }.associateBy { it.id }
-                    } else {
-                        emptyMap()
+
+                    val auxiliaryDataDeferred = async {
+                        val source = sourceDeferred.await()
+
+                        val metadataJob = async {
+                            val metadataSource = source.getMainSource<MetadataSource<*, *>>()
+                            if (metadataSource != null) {
+                                getFlatMetadataById.await(mangaId)?.raise(metadataSource.metaClass)
+                            } else null
+                        }
+
+                        val mergedRefsJob = async {
+                            if (source is MergedSource) getMergedReferencesById.await(manga.id) else emptyList()
+                        }
+
+                        val mergedMangaJob = async {
+                            if (source is MergedSource) getMergedMangaById.await(manga.id).associateBy { it.id } else emptyMap()
+                        }
+
+                        Triple(metadataJob.await(), mergedRefsJob.await(), mergedMangaJob.await())
                     }
+
+                    val source = sourceDeferred.await()
+                    val (metadata, mergedReferences, mergedManga) = auxiliaryDataDeferred.await()
+
                     val relativeTime = uiPreferences.relativeTime().get()
                     val autoScrollFreq = readerPreferences.autoscrollInterval().get()
                     // SY <--
+
                     mutableState.update {
                         it.copy(
                             manga = manga,
@@ -389,7 +404,7 @@ class ReaderViewModel @JvmOverloads constructor(
                     if (chapterId == -1L) chapterId = initialChapterId
 
                     val context = Injekt.get<Application>()
-                    // val source = sourceManager.getOrStub(manga.source)
+
                     loader = ChapterLoader(
                         context = context,
                         downloadManager = downloadManager,
@@ -409,7 +424,6 @@ class ReaderViewModel @JvmOverloads constructor(
                     )
                     Result.success(true)
                 } else {
-                    // Unlikely but okay
                     Result.success(false)
                 }
             } catch (e: Throwable) {
