@@ -74,7 +74,6 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.runBlocking
 import logcat.LogPriority
 import tachiyomi.core.common.preference.toggle
 import tachiyomi.core.common.storage.UniFileTempFileManager
@@ -383,87 +382,64 @@ class ReaderViewModel @JvmOverloads constructor(
      * Initializes this presenter with the given [mangaId] and [initialChapterId]. This method will
      * fetch the manga from the database and initialize the initial chapter.
      */
-    suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
+    suspend fun init(mangaId: Long, initialChapterId: Long, page: Int?): Result<Boolean> {
         if (!needsInit()) return Result.success(true)
         this.mangaId = mangaId
         return withIOContext {
             try {
-                val manga = getManga.await(mangaId)
-                if (manga != null) {
-                    // SY -->
-                    sourceManager.isInitialized.first { it }
-                    val source = sourceManager.getOrStub(manga.source)
-                    val metadataSource = source.getMainSource<MetadataSource<*, *>>()
-                    val metadata = if (metadataSource != null) {
-                        getFlatMetadataById.await(mangaId)?.raise(metadataSource.metaClass)
-                    } else {
-                        null
-                    }
-                    val mergedReferences = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedReferencesById.await(manga.id)
-                        }
-                    } else {
-                        emptyList()
-                    }
-                    val mergedManga = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedMangaById.await(manga.id)
-                        }.associateBy { it.id }
-                    } else {
-                        emptyMap()
-                    }
-                    val relativeTime = uiPreferences.relativeTime().get()
-                    val autoScrollFreq = readerPreferences.autoscrollInterval().get()
-                    // SY <--
-                    mutableState.update {
-                        it.copy(
-                            manga = manga,
-                            /* SY --> */
-                            meta = metadata,
-                            mergedManga = mergedManga,
-                            dateRelativeTime = relativeTime,
-                            ehAutoscrollFreq = if (autoScrollFreq == -1f) {
-                                ""
-                            } else {
-                                autoScrollFreq.toString()
-                            },
-                            isAutoScrollEnabled = autoScrollFreq != -1f,
-                            /* SY <-- */
-                        )
-                    }
-                    if (chapterId == -1L) chapterId = initialChapterId
+                val manga = getManga.await(mangaId) ?: return@withIOContext Result.success(false)
 
-                    val context = Injekt.get<Application>()
-                    // val source = sourceManager.getOrStub(manga.source)
-                    loader = ChapterLoader(
-                        context = context,
-                        downloadManager = downloadManager,
-                        downloadProvider = downloadProvider,
+                sourceManager.isInitialized.first { it }
+                val source = sourceManager.getOrStub(manga.source)
+                val metadataSource = source.getMainSource<MetadataSource<*, *>>()
+                val metadata = metadataSource?.let {
+                    getFlatMetadataById.await(mangaId)?.raise(it.metaClass)
+                }
+
+                val mergedReferences = if (source is MergedSource) {
+                    getMergedReferencesById.await(manga.id)
+                } else emptyList()
+
+                val mergedManga = if (source is MergedSource) {
+                    getMergedMangaById.await(manga.id).associateBy { it.id }
+                } else emptyMap()
+
+                val relativeTime = uiPreferences.relativeTime().get()
+                val autoScrollFreq = readerPreferences.autoscrollInterval().get()
+
+                mutableState.update {
+                    it.copy(
                         manga = manga,
-                        source = source, /* SY --> */
-                        sourceManager = sourceManager,
-                        readerPrefs = readerPreferences,
-                        mergedReferences = mergedReferences,
-                        mergedManga = mergedManga, /* SY <-- */
+                        meta = metadata,
+                        mergedManga = mergedManga,
+                        dateRelativeTime = relativeTime,
+                        ehAutoscrollFreq = if (autoScrollFreq == -1f) "" else autoScrollFreq.toString(),
+                        isAutoScrollEnabled = autoScrollFreq != -1f,
                     )
+                }
 
-                    chapterList = getChapterList(manga)
+                if (chapterId == -1L) chapterId = initialChapterId
 
-                    loadChapter(
-                        loader!!,
-                        chapterList.first { chapterId == it.chapter.id },
-                        /* SY --> */page, /* SY <-- */
-                    )
+                loader = ChapterLoader(
+                    context = Injekt.get<Application>(),
+                    downloadManager = downloadManager,
+                    downloadProvider = downloadProvider,
+                    manga = manga,
+                    source = source,
+                    sourceManager = sourceManager,
+                    readerPrefs = readerPreferences,
+                    mergedReferences = mergedReferences,
+                    mergedManga = mergedManga,
+                )
+
+                chapterList = getChapterList(manga)
+
+                chapterList.firstOrNull { chapterId == it.chapter.id }?.let { chapter ->
+                    loader?.let { loadChapter(it, chapter, page) }
                     Result.success(true)
-                } else {
-                    // Unlikely but okay
-                    Result.success(false)
-                }
+                } ?: Result.success(false)
             } catch (e: Throwable) {
-                if (e is CancellationException) {
-                    throw e
-                }
+                if (e is CancellationException) throw e
                 Result.failure(e)
             }
         }
@@ -945,22 +921,20 @@ class ReaderViewModel @JvmOverloads constructor(
      */
     fun setMangaReadingMode(readingMode: ReadingMode) {
         val manga = manga ?: return
-        runBlocking(Dispatchers.IO) {
+        viewModelScope.launch(Dispatchers.IO) {
             setMangaViewerFlags.awaitSetReadingMode(manga.id, readingMode.flagValue.toLong())
-            val currChapters = state.value.viewerChapters
-            if (currChapters != null) {
-                // Save current page
-                val currChapter = currChapters.currChapter
-                currChapter.requestedPage = currChapter.chapter.last_page_read
 
-                mutableState.update {
-                    it.copy(
-                        manga = getManga.await(manga.id),
-                        viewerChapters = currChapters,
-                    )
-                }
-                eventChannel.send(Event.ReloadViewerChapters)
+            val currChapters = state.value.viewerChapters ?: return@launch
+            val currChapter = currChapters.currChapter
+            currChapter.requestedPage = currChapter.chapter.last_page_read
+
+            mutableState.update {
+                it.copy(
+                    manga = getManga.await(manga.id),
+                    viewerChapters = currChapters,
+                )
             }
+            eventChannel.send(Event.ReloadViewerChapters)
         }
     }
 
