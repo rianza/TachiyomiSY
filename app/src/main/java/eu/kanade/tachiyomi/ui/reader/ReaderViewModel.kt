@@ -32,6 +32,8 @@ import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.source.online.MetadataSource
 import eu.kanade.tachiyomi.source.online.all.MergedSource
+import eu.kanade.tachiyomi.source.LocalSource
+import eu.kanade.tachiyomi.source.SourceManager
 import eu.kanade.tachiyomi.ui.reader.chapter.ReaderChapterItem
 import eu.kanade.tachiyomi.ui.reader.loader.ChapterLoader
 import eu.kanade.tachiyomi.ui.reader.loader.DownloadPageLoader
@@ -61,7 +63,10 @@ import exh.util.defaultReaderType
 import exh.util.mangaType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -338,35 +343,48 @@ class ReaderViewModel @JvmOverloads constructor(
      * Initializes this presenter with the given [mangaId] and [initialChapterId]. This method will
      * fetch the manga from the database and initialize the initial chapter.
      */
-    suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
+        suspend fun init(mangaId: Long, initialChapterId: Long /* SY --> */, page: Int?/* SY <-- */): Result<Boolean> {
         if (!needsInit()) return Result.success(true)
         return withIOContext {
             try {
                 val manga = getManga.await(mangaId)
                 if (manga != null) {
                     // SY -->
-                    sourceManager.isInitialized.first { it }
-                    val source = sourceManager.getOrStub(manga.source)
-                    val metadataSource = source.getMainSource<MetadataSource<*, *>>()
-                    val metadata = if (metadataSource != null) {
-                        getFlatMetadataById.await(mangaId)?.raise(metadataSource.metaClass)
-                    } else {
-                        null
-                    }
-                    val mergedReferences = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedReferencesById.await(manga.id)
+                    val (source, auxiliaryData) = coroutineScope {
+                        val sourceDeferred = async {
+                            sourceManager.isInitialized.first { it }
+                            var src = sourceManager.getOrStub(manga.source)
+
+                            if (src is SourceManager.StubSource && manga.source != LocalSource.ID && manga.source != MERGED_SOURCE_ID) {
+                                delay(150)
+                                src = sourceManager.getOrStub(manga.source)
+                            }
+                            src
                         }
-                    } else {
-                        emptyList()
+
+                        val auxDeferred = async {
+                            val src = sourceDeferred.await()
+
+                            val metadataJob = async {
+                                val metadataSource = src.getMainSource<MetadataSource<*, *>>()
+                                if (metadataSource != null) {
+                                    getFlatMetadataById.await(mangaId)?.raise(metadataSource.metaClass)
+                                } else null
+                            }
+
+                            val mergedRefsJob = async {
+                                if (src is MergedSource) getMergedReferencesById.await(manga.id) else emptyList()
+                            }
+
+                            val mergedMangaJob = async {
+                                if (src is MergedSource) getMergedMangaById.await(manga.id).associateBy { it.id } else emptyMap()
+                            }
+                            Triple(metadataJob.await(), mergedRefsJob.await(), mergedMangaJob.await())
+                        }
+                        Pair(sourceDeferred.await(), auxDeferred.await())
                     }
-                    val mergedManga = if (source is MergedSource) {
-                        runBlocking {
-                            getMergedMangaById.await(manga.id)
-                        }.associateBy { it.id }
-                    } else {
-                        emptyMap()
-                    }
+
+                    val (metadata, mergedReferences, mergedManga) = auxiliaryData
                     val relativeTime = uiPreferences.relativeTime().get()
                     val autoScrollFreq = readerPreferences.autoscrollInterval().get()
                     // SY <--
