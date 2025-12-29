@@ -230,6 +230,9 @@ class MangaScreen(
             onChapterSelected = screenModel::toggleSelection,
             onAllChapterSelected = screenModel::toggleAllSelection,
             onInvertSelection = screenModel::invertSelection,
+            onMangaClicked = {
+                navigator.push(MangaScreen(it.id))
+            },
         )
 
         var showScanlatorsDialog by remember { mutableStateOf(false) }

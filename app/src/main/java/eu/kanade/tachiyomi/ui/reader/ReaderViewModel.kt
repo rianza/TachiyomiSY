@@ -359,10 +359,14 @@ class ReaderViewModel @JvmOverloads constructor(
                 }
                 val mergedReferences = if (source is MergedSource) {
                     getMergedReferencesById.await(manga.id)
-                } else emptyList()
+                } else {
+                    emptyList()
+                }
                 val mergedManga = if (source is MergedSource) {
                     getMergedMangaById.await(manga.id).associateBy { it.id }
-                } else emptyMap()
+                } else {
+                    emptyMap()
+                }
 
                 val relativeTime = uiPreferences.relativeTime().get()
                 val autoScrollFreq = readerPreferences.autoscrollInterval().get()

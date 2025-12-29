@@ -61,8 +61,8 @@ import eu.kanade.presentation.manga.components.MangaInfoButtons
 import eu.kanade.presentation.manga.components.MangaToolbar
 import eu.kanade.presentation.manga.components.MissingChapterCountListItem
 import eu.kanade.presentation.manga.components.PagePreviewItems
-import eu.kanade.presentation.manga.components.PagePreviews
 import eu.kanade.presentation.manga.components.SearchMetadataChips
+import eu.kanade.presentation.manga.components.SuggestionsCarousel
 import eu.kanade.presentation.util.formatChapterNumber
 import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.source.Source
@@ -167,6 +167,7 @@ fun MangaScreen(
     onChapterSelected: (ChapterList.Item, Boolean, Boolean, Boolean) -> Unit,
     onAllChapterSelected: (Boolean) -> Unit,
     onInvertSelection: () -> Unit,
+    onMangaClicked: (Manga) -> Unit,
 ) {
     val context = LocalContext.current
     val onCopyTagToClipboard: (tag: String) -> Unit = {
@@ -220,6 +221,7 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
+            onMangaClicked = { navigator.push(MangaScreen(it.id)) },
         )
     } else {
         MangaScreenLargeImpl(
@@ -266,6 +268,7 @@ fun MangaScreen(
             onChapterSelected = onChapterSelected,
             onAllChapterSelected = onAllChapterSelected,
             onInvertSelection = onInvertSelection,
+            onMangaClicked = { navigator.push(MangaScreen(it.id)) },
         )
     }
 }
@@ -543,6 +546,16 @@ private fun MangaScreenSmallImpl(
                                 onMergeWithAnotherClicked = onMergeWithAnotherClicked,
                             )
                         }
+                    }
+
+                    item(
+                        key = MangaScreenItem.RECOMMENDATIONS,
+                        contentType = MangaScreenItem.RECOMMENDATIONS,
+                    ) {
+                        SuggestionsCarousel(
+                            suggestions = state.suggestions,
+                            onMangaClick = onMangaClicked,
+                        )
                     }
 
                     if (state.pagePreviewsState !is PagePreviewState.Unused && previewsRowCount > 0) {
@@ -832,6 +845,10 @@ fun MangaScreenLargeImpl(
                                 onMergeWithAnotherClicked = onMergeWithAnotherClicked,
                             )
                         }
+                        SuggestionsCarousel(
+                            suggestions = state.suggestions,
+                            onMangaClick = onMangaClicked,
+                        )
                         if (state.pagePreviewsState !is PagePreviewState.Unused && previewsRowCount > 0) {
                             PagePreviews(
                                 pagePreviewState = state.pagePreviewsState,

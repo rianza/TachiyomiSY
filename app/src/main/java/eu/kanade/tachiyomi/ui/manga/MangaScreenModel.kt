@@ -43,6 +43,7 @@ import eu.kanade.tachiyomi.data.download.model.Download
 import eu.kanade.tachiyomi.data.track.EnhancedTracker
 import eu.kanade.tachiyomi.data.track.TrackerManager
 import eu.kanade.tachiyomi.network.HttpException
+import eu.kanade.tachiyomi.source.CatalogueSource
 import eu.kanade.tachiyomi.source.PagePreviewSource
 import eu.kanade.tachiyomi.source.Source
 import eu.kanade.tachiyomi.source.getNameForMangaInfo
@@ -58,6 +59,7 @@ import exh.log.xLogD
 import exh.md.utils.FollowStatus
 import exh.metadata.metadata.RaisedSearchMetadata
 import exh.metadata.metadata.base.FlatMetadata
+import exh.recs.sources.RecommendationPagingSource
 import exh.source.MERGED_SOURCE_ID
 import exh.source.getMainSource
 import exh.source.isEhBasedManga
@@ -461,10 +463,38 @@ class MangaScreenModel(
                 fetchFromSourceTasks.awaitAll()
             }
 
+            // SY -->
+            fetchSuggestions()
+            // SY <--
+
             // Initial loading finished
             updateSuccessState { it.copy(isRefreshingData = false) }
         }
     }
+
+    // SY -->
+    private fun fetchSuggestions() {
+        val state = successState ?: return
+        screenModelScope.launchIO {
+            try {
+                val source = state.source as? CatalogueSource ?: return@launchIO
+                val recs = RecommendationPagingSource.createSources(
+                    state.manga,
+                    source,
+                )
+                    .find { it.recType == RecommendationPagingSource.RecType.ANILIST }
+                    ?.requestNextPage(1)
+                    ?.mangas
+                    ?.map { networkToLocalManga.await(it.toDomainManga(state.source.id)) }
+                if (recs != null) {
+                    updateSuccessState { it.copy(suggestions = recs) }
+                }
+            } catch (e: Exception) {
+                logcat(LogPriority.ERROR, e) { "Failed to get suggestions" }
+            }
+        }
+    }
+    // SY <--
 
     fun fetchAllFromSource(manualFetch: Boolean = true) {
         screenModelScope.launch {
@@ -1753,6 +1783,7 @@ class MangaScreenModel(
             val pagePreviewsState: PagePreviewState,
             val alwaysShowReadingProgress: Boolean,
             val previewsRowCount: Int,
+            val suggestions: List<Manga> = emptyList(),
             // SY <--
         ) : State {
             val processedChapters by lazy {
