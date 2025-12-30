@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.ui.setting
 
+import android.os.Parcelable
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -19,27 +20,22 @@ import eu.kanade.presentation.more.settings.screen.SettingsTrackingScreen
 import eu.kanade.presentation.more.settings.screen.about.AboutScreen
 import eu.kanade.presentation.util.DefaultNavigatorScreenTransition
 import eu.kanade.presentation.util.LocalBackPress
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.presentation.util.isTabletUi
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.components.TwoPanelBox
 
+@Parcelize
 class SettingsScreen(
-    private val destination: Int? = null,
-) : Screen() {
-
-    constructor(destination: Destination) : this(destination.id)
+    private val destination: Destination? = null,
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
         val parentNavigator = LocalNavigator.currentOrThrow
         if (!isTabletUi()) {
             Navigator(
-                screen = when (destination) {
-                    Destination.About.id -> AboutScreen
-                    Destination.DataAndStorage.id -> SettingsDataScreen
-                    Destination.Tracking.id -> SettingsTrackingScreen
-                    else -> SettingsMainScreen
-                },
+                screen = destination?.let { getScreen(it) } ?: SettingsMainScreen,
                 onBackPressed = null,
             ) {
                 val pop: () -> Unit = {
@@ -55,12 +51,7 @@ class SettingsScreen(
             }
         } else {
             Navigator(
-                screen = when (destination) {
-                    Destination.About.id -> AboutScreen
-                    Destination.DataAndStorage.id -> SettingsDataScreen
-                    Destination.Tracking.id -> SettingsTrackingScreen
-                    else -> SettingsAppearanceScreen
-                },
+                screen = destination?.let { getScreen(it) } ?: SettingsAppearanceScreen,
                 onBackPressed = null,
             ) {
                 val insets = WindowInsets.systemBars.only(WindowInsetsSides.Horizontal)
@@ -79,9 +70,21 @@ class SettingsScreen(
         }
     }
 
-    sealed class Destination(val id: Int) {
-        data object About : Destination(0)
-        data object DataAndStorage : Destination(1)
-        data object Tracking : Destination(2)
+    private fun getScreen(destination: Destination): ParcelableScreen = when (destination) {
+        is Destination.About -> AboutScreen
+        is Destination.DataAndStorage -> SettingsDataScreen
+        is Destination.Tracking -> SettingsTrackingScreen
+    }
+
+    @Parcelize
+    sealed interface Destination : Parcelable {
+        @Parcelize
+        data object About : Destination
+
+        @Parcelize
+        data object DataAndStorage : Destination
+
+        @Parcelize
+        data object Tracking : Destination
     }
 }

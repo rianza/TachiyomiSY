@@ -27,7 +27,7 @@ import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.more.LogoHeader
 import eu.kanade.presentation.more.settings.widget.TextPreferenceWidget
 import eu.kanade.presentation.util.LocalBackPress
-import eu.kanade.presentation.util.Screen
+import eu.kanade.presentation.util.ParcelableScreen
 import eu.kanade.tachiyomi.BuildConfig
 import eu.kanade.tachiyomi.data.updater.AppUpdateChecker
 import eu.kanade.tachiyomi.ui.more.NewUpdateScreen
@@ -38,6 +38,7 @@ import eu.kanade.tachiyomi.util.system.isPreviewBuildType
 import eu.kanade.tachiyomi.util.system.toast
 import exh.syDebugVersion
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 import logcat.LogPriority
 import tachiyomi.core.common.util.lang.withIOContext
 import tachiyomi.core.common.util.lang.withUIContext
@@ -60,7 +61,8 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 
-object AboutScreen : Screen() {
+@Parcelize
+object AboutScreen : ParcelableScreen() {
 
     @Composable
     override fun Content() {

@@ -1,15 +1,17 @@
 package tachiyomi.domain.manga.model
 
+import android.os.Parcelable
 import androidx.compose.runtime.Immutable
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.model.UpdateStrategy
+import kotlinx.parcelize.Parcelize
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.domain.manga.interactor.GetCustomMangaInfo
 import uy.kohesive.injekt.injectLazy
-import java.io.Serializable
 import java.time.Instant
 
 @Immutable
+@Parcelize
 data class Manga(
     val id: Long,
     val source: Long,
@@ -37,9 +39,10 @@ data class Manga(
     val favoriteModifiedAt: Long?,
     val version: Long,
     val notes: String,
-) : Serializable {
+) : Parcelable {
 
     // SY -->
+    @Transient
     private val customMangaInfo = if (favorite) {
         getCustomMangaInfo.get(id)
     } else {
