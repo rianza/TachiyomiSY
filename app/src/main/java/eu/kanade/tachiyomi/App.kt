@@ -71,8 +71,11 @@ import exh.log.XLogLogcatLogger
 import exh.log.xLogD
 import exh.syDebugVersion
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import logcat.LogPriority
 import logcat.LogcatLogger
 import mihon.core.firebase.FirebaseConfig
@@ -130,9 +133,11 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         initExpensiveComponents(this)
         // SY <--
 
-        setupExhLogging() // EXH logging
-        LogcatLogger.install()
-        LogcatLogger.loggers += XLogLogcatLogger() // SY Redirect Logcat to XLog
+        GlobalScope.launch(Dispatchers.IO) {
+            setupExhLogging()
+            LogcatLogger.install()
+            LogcatLogger.loggers += XLogLogcatLogger()
+        }
 
         setupNotificationChannels()
 
@@ -196,14 +201,18 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             LogcatLogger.install(AndroidLogcatLogger(LogPriority.VERBOSE))
         }*/
 
-        if (!WorkManager.isInitialized()) {
-            WorkManager.initialize(this, Configuration.Builder().build())
-        }
-        val syncPreferences: SyncPreferences = Injekt.get()
-        val syncTriggerOpt = syncPreferences.getSyncTriggerOptions()
-        if (syncPreferences.isSyncEnabled() && syncTriggerOpt.syncOnAppStart) {
-            SyncDataJob.startNow(this@App)
-        }
+        GlobalScope.launch(Dispatchers.IO) {
+            delay(1000) // Tunggu 1 detik agar UI render dulu
+            
+            if (!WorkManager.isInitialized()) {
+                WorkManager.initialize(this@App, Configuration.Builder().build())
+            }
+            
+            val syncPreferences: SyncPreferences = Injekt.get()
+            val syncTriggerOpt = syncPreferences.getSyncTriggerOptions()
+            if (syncPreferences.isSyncEnabled() && syncTriggerOpt.syncOnAppStart) {
+                SyncDataJob.startNow(this@App)
+            }
 
         initializeMigrator()
     }
@@ -271,7 +280,9 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         val syncPreferences: SyncPreferences = Injekt.get()
         val syncTriggerOpt = syncPreferences.getSyncTriggerOptions()
         if (syncPreferences.isSyncEnabled() && syncTriggerOpt.syncOnAppResume) {
-            SyncDataJob.startNow(this@App)
+            GlobalScope.launch(Dispatchers.IO) {
+                SyncDataJob.startNow(this@App)
+            }
         }
     }
 

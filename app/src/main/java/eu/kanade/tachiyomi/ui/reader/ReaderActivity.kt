@@ -467,10 +467,14 @@ class ReaderActivity : BaseActivity() {
     }
 
     override fun onPause() {
+        super.onPause()
+    }
+    
+    override fun onStop() {
+        super.onStop()
         lifecycleScope.launchNonCancellable {
             viewModel.updateHistory()
         }
-        super.onPause()
     }
 
     /**
@@ -852,6 +856,8 @@ class ReaderActivity : BaseActivity() {
      * Called from the presenter when a manga is ready. Used to instantiate the appropriate viewer.
      */
     private fun updateViewer() {
+        if (isDestroyed || isFinishing) return
+
         val prevViewer = viewModel.state.value.viewer
         val newViewer = ReadingMode.toViewer(viewModel.getMangaReadingMode(), this)
 

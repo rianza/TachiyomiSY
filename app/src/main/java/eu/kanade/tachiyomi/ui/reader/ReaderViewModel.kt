@@ -350,7 +350,11 @@ class ReaderViewModel @JvmOverloads constructor(
                 val manga = getManga.await(mangaId)
                 if (manga != null) {
                     // SY -->
-                    sourceManager.isInitialized.first { it }
+                    try {
+                        sourceManager.isInitialized.first { it }
+                    } catch (e: Exception) {
+                        logcat(LogPriority.WARN) { "Timeout waiting for SourceManager, proceeding anyway" }
+                    }
                     val source = sourceManager.getOrStub(manga.source)
                     val metadataSource = source.getMainSource<MetadataSource<*, *>>()
                     val metadata = if (metadataSource != null) {
@@ -598,7 +602,7 @@ class ReaderViewModel @JvmOverloads constructor(
         val pages = selectedChapter.pages ?: return
 
         // Save last page read and mark as read if needed
-        viewModelScope.launchNonCancellable {
+        viewModelScope.launchNonCancellable(Dispatchers.IO) {
             updateChapterProgress(selectedChapter, page/* SY --> */, hasExtraPage/* SY <-- */)
         }
 
@@ -713,7 +717,11 @@ class ReaderViewModel @JvmOverloads constructor(
 
                 // Check if syncing is enabled for chapter read:
                 if (isSyncEnabled && syncTriggerOpt.syncOnChapterRead) {
-                    SyncDataJob.startNow(Injekt.get<Application>())
+                    try {
+                        SyncDataJob.startNow(Injekt.get<Application>())
+                    } catch (e: Exception) {
+                        logcat(LogPriority.ERROR, e)
+                    }
                 }
             }
 
@@ -728,7 +736,11 @@ class ReaderViewModel @JvmOverloads constructor(
             // SY -->
             // Check if syncing is enabled for chapter open:
             if (isSyncEnabled && syncTriggerOpt.syncOnChapterOpen && readerChapter.chapter.last_page_read == 0) {
-                SyncDataJob.startNow(Injekt.get<Application>())
+                try {
+                    SyncDataJob.startNow(Injekt.get<Application>())
+                } catch (e: Exception) {
+                    logcat(LogPriority.ERROR, e)
+                }
             }
             // SY <--
         }
@@ -738,7 +750,7 @@ class ReaderViewModel @JvmOverloads constructor(
         readerChapter.chapter.read = true
         // SY -->
         if (manga?.isEhBasedManga() == true) {
-            viewModelScope.launchNonCancellable {
+            viewModelScope.launchNonCancellable(Dispatchers.IO) {
                 val chapterUpdates = unfilteredChapterList
                     .filter { it.sourceOrder > readerChapter.chapter.source_order }
                     .map { chapter ->
@@ -788,15 +800,17 @@ class ReaderViewModel @JvmOverloads constructor(
      * Saves the chapter last read history if incognito mode isn't on.
      */
     suspend fun updateHistory() {
-        getCurrentChapter()?.let { readerChapter ->
-            if (incognitoMode) return@let
+        withIOContext {
+            getCurrentChapter()?.let { readerChapter ->
+                if (incognitoMode) return@let
 
-            val chapterId = readerChapter.chapter.id!!
-            val endTime = Date()
-            val sessionReadDuration = chapterReadStartTime?.let { endTime.time - it } ?: 0
-
-            upsertHistory.await(HistoryUpdate(chapterId, endTime, sessionReadDuration))
-            chapterReadStartTime = null
+                val chapterId = readerChapter.chapter.id!!
+                val endTime = Date()
+                val sessionReadDuration = chapterReadStartTime?.let { endTime.time - it } ?: 0
+    
+                upsertHistory.await(HistoryUpdate(chapterId, endTime, sessionReadDuration))
+                chapterReadStartTime = null
+            }
         }
     }
 

@@ -47,11 +47,14 @@ import eu.kanade.tachiyomi.ui.library.LibraryTab
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.ui.more.MoreTab
 import eu.kanade.tachiyomi.ui.updates.UpdatesTab
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import soup.compose.material.motion.animation.materialFadeThroughIn
 import soup.compose.material.motion.animation.materialFadeThroughOut
 import tachiyomi.domain.library.service.LibraryPreferences
@@ -264,12 +267,14 @@ object HomeScreen : Screen() {
                 when {
                     tab is UpdatesTab -> {
                         val count by produceState(initialValue = 0) {
-                            val pref = Injekt.get<LibraryPreferences>()
-                            combine(
-                                pref.newShowUpdatesCount().changes(),
-                                pref.newUpdatesCount().changes(),
-                            ) { show, count -> if (show) count else 0 }
-                                .collectLatest { value = it }
+                            withContext(Dispatchers.IO) {
+                                val pref = Injekt.get<LibraryPreferences>()
+                                combine(
+                                    pref.newShowUpdatesCount().changes(),
+                                    pref.newUpdatesCount().changes(),
+                                ) { show, count -> if (show) count else 0 }
+                                    .collectLatest { value = it }
+                            }
                         }
                         if (count > 0) {
                             Badge {
@@ -288,8 +293,10 @@ object HomeScreen : Screen() {
 
                     BrowseTab::class.isInstance(tab) -> {
                         val count by produceState(initialValue = 0) {
-                            Injekt.get<SourcePreferences>().extensionUpdatesCount().changes()
-                                .collectLatest { value = it }
+                            withContext(Dispatchers.IO) {
+                                Injekt.get<SourcePreferences>().extensionUpdatesCount().changes()
+                                    .collectLatest { value = it }
+                            }
                         }
                         if (count > 0) {
                             Badge {
