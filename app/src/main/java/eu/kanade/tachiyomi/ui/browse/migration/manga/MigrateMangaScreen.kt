@@ -21,10 +21,11 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.components.AppBar
 import eu.kanade.presentation.manga.components.BaseMangaListItem
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.activity.ParcelableScreen
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.parcelize.Parcelize
 import mihon.feature.migration.config.MigrationConfigScreen
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.i18n.MR
@@ -37,9 +38,10 @@ import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.presentation.core.util.selectedBackground
 import tachiyomi.presentation.core.util.shouldExpandFAB
 
+@Parcelize
 data class MigrateMangaScreen(
     private val sourceId: Long,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {

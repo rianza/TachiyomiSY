@@ -9,13 +9,15 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.ExtensionDetailsScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.activity.ParcelableScreen
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.screens.LoadingScreen
 
+@Parcelize
 data class ExtensionDetailsScreen(
     private val pkgName: String,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {
