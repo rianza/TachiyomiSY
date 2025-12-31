@@ -9,12 +9,14 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.SourcesFilterScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.activity.ParcelableScreen
 import eu.kanade.tachiyomi.util.system.toast
+import kotlinx.parcelize.Parcelize
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.screens.LoadingScreen
 
-class SourcesFilterScreen : Screen() {
+@Parcelize
+data object SourcesFilterScreen : ParcelableScreen() {
 
     @Composable
     override fun Content() {

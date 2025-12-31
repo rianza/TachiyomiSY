@@ -19,8 +19,8 @@ import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.BrowseSourceContent
 import eu.kanade.presentation.components.SearchToolbar
-import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.source.online.HttpSource
+import eu.kanade.tachiyomi.ui.base.activity.ParcelableScreen
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceScreenModel
 import eu.kanade.tachiyomi.ui.browse.source.browse.SourceFilterDialog
 import eu.kanade.tachiyomi.ui.home.HomeScreen
@@ -29,6 +29,7 @@ import eu.kanade.tachiyomi.ui.webview.WebViewScreen
 import exh.ui.ifSourcesLoaded
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
+import kotlinx.parcelize.Parcelize
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.feature.migration.list.MigrationListScreen
 import mihon.presentation.core.util.collectAsLazyPagingItems
@@ -41,11 +42,12 @@ import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.source.local.LocalSource
 
+@Parcelize
 data class MigrateSourceSearchScreen(
     private val currentManga: Manga,
     private val sourceId: Long,
     private val query: String?,
-) : Screen() {
+) : ParcelableScreen() {
 
     @Composable
     override fun Content() {

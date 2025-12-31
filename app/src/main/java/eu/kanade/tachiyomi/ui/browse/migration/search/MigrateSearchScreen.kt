@@ -7,13 +7,15 @@ import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.MigrateSearchScreen
-import eu.kanade.presentation.util.Screen
+import eu.kanade.tachiyomi.ui.base.activity.ParcelableScreen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchScreenModel
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
+import kotlinx.parcelize.Parcelize
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.feature.migration.list.MigrationListScreen
 
-class MigrateSearchScreen(private val mangaId: Long) : Screen() {
+@Parcelize
+data class MigrateSearchScreen(val mangaId: Long) : ParcelableScreen() {
 
     @Composable
     override fun Content() {

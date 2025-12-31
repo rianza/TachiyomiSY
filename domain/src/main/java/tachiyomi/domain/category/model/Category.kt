@@ -1,13 +1,15 @@
 package tachiyomi.domain.category.model
 
-import java.io.Serializable
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 
+@Parcelize
 data class Category(
     val id: Long,
     val name: String,
     val order: Long,
     val flags: Long,
-) : Serializable {
+) : Parcelable {
 
     val isSystemCategory: Boolean = id == UNCATEGORIZED_ID
 
