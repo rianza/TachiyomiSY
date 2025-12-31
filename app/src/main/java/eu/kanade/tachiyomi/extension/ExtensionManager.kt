@@ -140,18 +140,16 @@ class ExtensionManager(
      * Loads and registers the installed extensions.
      */
     private fun initExtensions() {
-        val extensions = ExtensionLoader.loadExtensions(context)
+        val cached = restoreExtensions()
+        if (cached.isNotEmpty()) {
+            installedExtensionMapFlow.value = cached
+        }
 
+        val extensions = ExtensionLoader.loadExtensions(context)
         installedExtensionMapFlow.value = extensions
             .filterIsInstance<LoadResult.Success>()
             .associate { it.extension.pkgName to it.extension }
-
-        untrustedExtensionMapFlow.value = extensions
-            .filterIsInstance<LoadResult.Untrusted>()
-            .associate { it.extension.pkgName to it.extension }
-            // SY -->
-            .filterNotBlacklisted()
-        // SY <--
+        persistExtensions(installedExtensionMapFlow.value)
 
         _isInitialized.value = true
     }
@@ -313,6 +311,21 @@ class ExtensionManager(
      */
     fun uninstallExtension(extension: Extension) {
         installer.uninstallApk(extension.pkgName)
+    }
+
+    private val prefs = context.getSharedPreferences("tachiyomi_ext_cache", Context.MODE_PRIVATE)
+
+    private fun persistExtensions(map: Map<String, Extension.Installed>) {
+        prefs.edit().putStringSet("installed_exts", map.keys).apply()
+    }
+
+    private fun restoreExtensions(): Map<String, Extension.Installed> {
+        val set = prefs.getStringSet("installed_exts", emptySet()) ?: return emptyMap()
+        return set.mapNotNull { pkg ->
+            (ExtensionLoader.loadExtensionFromPkgName(context, pkg) as? LoadResult.Success)
+                ?.extension
+                ?.let { pkg to it }
+        }.toMap()
     }
 
     /**

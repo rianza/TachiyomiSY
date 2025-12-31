@@ -214,25 +214,32 @@ class ReaderActivity : BaseActivity() {
         setContentView(binding.root)
         binding.setComposeOverlay()
 
+        val restoredPage = savedInstanceState?.getInt("page", -1)
+        val restoredChapId = savedInstanceState?.getLong("chapter_id", -1)
+        val restoredMangaId = savedInstanceState?.getLong("manga_id", -1)
+
         if (viewModel.needsInit()) {
-            val manga = intent.extras?.getLong("manga", -1) ?: -1L
-            val chapter = intent.extras?.getLong("chapter", -1) ?: -1L
-            // SY -->
-            val page = intent.extras?.getInt("page", -1).takeUnless { it == -1 }
-            // SY <--
+            val manga = restoredMangaId.takeIf { it != null && it != -1L }
+                ?: intent.extras?.getLong("manga", -1) ?: -1L
+
+            val chapter = restoredChapId.takeIf { it != null && it != -1L }
+                ?: intent.extras?.getLong("chapter", -1) ?: -1L
+
+            val page = restoredPage.takeUnless { it == null || it == -1 }
+                ?: intent.extras?.getInt("page", -1).takeUnless { it == -1 }
+
             if (manga == -1L || chapter == -1L) {
                 finish()
                 return
             }
+
             NotificationReceiver.dismissNotification(this, manga.hashCode(), Notifications.ID_NEW_CHAPTERS)
 
             lifecycleScope.launchNonCancellable {
-                val initResult = viewModel.init(manga, chapter/* SY --> */, page/* SY <-- */)
+                val initResult = viewModel.init(manga, chapter, page)
                 if (!initResult.getOrDefault(false)) {
                     val exception = initResult.exceptionOrNull() ?: IllegalStateException("Unknown err")
-                    withUIContext {
-                        setInitialChapterError(exception)
-                    }
+                    withUIContext { setInitialChapterError(exception) }
                 }
             }
         }
@@ -453,6 +460,14 @@ class ReaderActivity : BaseActivity() {
             // SY <--
             null -> {}
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        val state = viewModel.state.value
+        state.manga?.id?.let { outState.putLong("manga_id", it) }
+        state.currentChapter?.chapter?.id?.let { outState.putLong("chapter_id", it) }
+        outState.putInt("page", state.currentPage)
     }
 
     /**
