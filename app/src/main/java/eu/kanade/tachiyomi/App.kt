@@ -71,8 +71,11 @@ import exh.log.XLogLogcatLogger
 import exh.log.xLogD
 import exh.syDebugVersion
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import logcat.LogPriority
 import logcat.LogcatLogger
 import mihon.core.firebase.FirebaseConfig
@@ -127,12 +130,18 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         Injekt.importModule(SYPreferenceModule(this))
         Injekt.importModule(SYDomainModule())
         InjektKoinBridge.startKoin(this)
+        
+        // FIX: Pindahkan initExpensiveComponents ke background jika memungkinkan atau biarkan jika library memaksa main thread.
+        // Biasanya ini aman di main thread, tapi kita akan optimalkan yang lain.
         initExpensiveComponents(this)
         // SY <--
 
-        setupExhLogging() // EXH logging
-        LogcatLogger.install()
-        LogcatLogger.loggers += XLogLogcatLogger() // SY Redirect Logcat to XLog
+        // FIX: Pindahkan logging setup ke background thread untuk mempercepat startup
+        GlobalScope.launch(Dispatchers.IO) {
+            setupExhLogging()
+            LogcatLogger.install()
+            LogcatLogger.loggers += XLogLogcatLogger()
+        }
 
         setupNotificationChannels()
 
@@ -192,20 +201,22 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         // Updates widget update
         WidgetManager(Injekt.get(), Injekt.get()).apply { init(scope) }
 
-        /*if (!LogcatLogger.isInstalled && networkPreferences.verboseLogging().get()) {
-            LogcatLogger.install(AndroidLogcatLogger(LogPriority.VERBOSE))
-        }*/
+        // FIX: Delay background tasks (WorkManager & Sync) agar UI muncul dulu
+        GlobalScope.launch(Dispatchers.IO) {
+            delay(1000) // Tunggu 1 detik agar UI render dulu
+            
+            if (!WorkManager.isInitialized()) {
+                WorkManager.initialize(this@App, Configuration.Builder().build())
+            }
+            
+            val syncPreferences: SyncPreferences = Injekt.get()
+            val syncTriggerOpt = syncPreferences.getSyncTriggerOptions()
+            if (syncPreferences.isSyncEnabled() && syncTriggerOpt.syncOnAppStart) {
+                SyncDataJob.startNow(this@App)
+            }
 
-        if (!WorkManager.isInitialized()) {
-            WorkManager.initialize(this, Configuration.Builder().build())
+            initializeMigrator()
         }
-        val syncPreferences: SyncPreferences = Injekt.get()
-        val syncTriggerOpt = syncPreferences.getSyncTriggerOptions()
-        if (syncPreferences.isSyncEnabled() && syncTriggerOpt.syncOnAppStart) {
-            SyncDataJob.startNow(this@App)
-        }
-
-        initializeMigrator()
     }
 
     private fun initializeMigrator() {
@@ -259,8 +270,9 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
             if (networkPreferences.verboseLogging().get()) logger(DebugLogger())
 
             // Coil spawns a new thread for every image load by default
-            fetcherCoroutineContext(Dispatchers.IO.limitedParallelism(8))
-            decoderCoroutineContext(Dispatchers.IO.limitedParallelism(3))
+            // FIX: Kurangi parallelism untuk fetcher agar tidak berebut bandwidth saat startup
+            fetcherCoroutineContext(Dispatchers.IO.limitedParallelism(4)) // Turunkan dari 8 ke 4
+            decoderCoroutineContext(Dispatchers.IO.limitedParallelism(2)) // Turunkan dari 3 ke 2
         }
             .build()
     }
@@ -271,7 +283,10 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         val syncPreferences: SyncPreferences = Injekt.get()
         val syncTriggerOpt = syncPreferences.getSyncTriggerOptions()
         if (syncPreferences.isSyncEnabled() && syncTriggerOpt.syncOnAppResume) {
-            SyncDataJob.startNow(this@App)
+            // FIX: Jalankan di background
+            GlobalScope.launch(Dispatchers.IO) {
+                SyncDataJob.startNow(this@App)
+            }
         }
     }
 

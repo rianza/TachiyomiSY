@@ -91,6 +91,7 @@ import exh.source.EH_SOURCE_ID
 import exh.source.EXH_SOURCE_ID
 import exh.source.ExhPreferences
 import exh.syDebugVersion
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
@@ -99,6 +100,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import mihon.core.migration.Migrator
 import tachiyomi.core.common.Constants
@@ -371,30 +373,38 @@ class MainActivity : BaseActivity() {
 
         // App updates
         LaunchedEffect(Unit) {
-            if (BuildConfig.INCLUDE_UPDATER) {
-                try {
-                    val result = AppUpdateChecker().checkForUpdate(context)
-                    if (result is GetApplicationRelease.Result.NewUpdate) {
-                        val updateScreen = NewUpdateScreen(
-                            versionName = result.release.version,
-                            changelogInfo = result.release.info,
-                            releaseLink = result.release.releaseLink,
-                            downloadLink = result.release.getDownloadLink(),
-                        )
-                        navigator.push(updateScreen)
+            // FIX: Pindahkan ke IO untuk mencegah frame drop saat aplikasi baru terbuka
+            withContext(Dispatchers.IO) {
+                if (BuildConfig.INCLUDE_UPDATER) {
+                    try {
+                        val result = AppUpdateChecker().checkForUpdate(context)
+                        if (result is GetApplicationRelease.Result.NewUpdate) {
+                            withContext(Dispatchers.Main) {
+                                val updateScreen = NewUpdateScreen(
+                                    versionName = result.release.version,
+                                    changelogInfo = result.release.info,
+                                    releaseLink = result.release.releaseLink,
+                                    downloadLink = result.release.getDownloadLink(),
+                                )
+                                navigator.push(updateScreen)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        logcat(LogPriority.ERROR, e)
                     }
-                } catch (e: Exception) {
-                    logcat(LogPriority.ERROR, e)
                 }
             }
         }
 
         // Extensions updates
         LaunchedEffect(Unit) {
-            try {
-                ExtensionApi().checkForUpdates(context)
-            } catch (e: Exception) {
-                logcat(LogPriority.ERROR, e)
+            // FIX: Pindahkan ke IO agar tidak memblokir Main Thread
+            withContext(Dispatchers.IO) {
+                try {
+                    ExtensionApi().checkForUpdates(context)
+                } catch (e: Exception) {
+                    logcat(LogPriority.ERROR, e)
+                }
             }
         }
     }
