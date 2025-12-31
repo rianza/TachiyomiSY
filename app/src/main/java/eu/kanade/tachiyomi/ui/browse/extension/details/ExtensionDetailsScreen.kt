@@ -1,26 +1,22 @@
 package eu.kanade.tachiyomi.ui.browse.extension.details
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.browse.ExtensionDetailsScreen
-import eu.kanade.presentation.util.Screen
-import kotlinx.coroutines.flow.collectLatest
+import eu.kanade.presentation.util.ParcelableScreen
+import kotlinx.parcelize.Parcelize
 import tachiyomi.presentation.core.screens.LoadingScreen
 
-data class ExtensionDetailsScreen(
-    private val pkgName: String,
-) : Screen() {
-
+@Parcelize
+class ExtensionDetailsScreen(private val pkgName: String) : ParcelableScreen() {
     @Composable
     override fun Content() {
-        val context = LocalContext.current
-        val screenModel = rememberScreenModel { ExtensionDetailsScreenModel(pkgName = pkgName, context = context) }
+        val navigator = LocalNavigator.currentOrThrow
+        val screenModel = rememberScreenModel { ExtensionDetailsScreenModel(pkgName = pkgName) }
         val state by screenModel.state.collectAsState()
 
         if (state.isLoading) {
@@ -28,26 +24,14 @@ data class ExtensionDetailsScreen(
             return
         }
 
-        val navigator = LocalNavigator.currentOrThrow
-
         ExtensionDetailsScreen(
             navigateUp = navigator::pop,
             state = state,
-            onClickSourcePreferences = { navigator.push(SourcePreferencesScreen(it)) },
-            onClickEnableAll = { screenModel.toggleSources(true) },
-            onClickDisableAll = { screenModel.toggleSources(false) },
-            onClickClearCookies = screenModel::clearCookies,
-            onClickUninstall = screenModel::uninstallExtension,
-            onClickSource = screenModel::toggleSource,
-            onClickIncognito = screenModel::toggleIncognito,
+            onClickSource = { navigator.push(SourcePreferencesScreen(it.id)) },
+            onClickUninstall = screenModel::uninstall,
+            onClickAppInfo = screenModel::openInSettings,
+            onClickToggle = screenModel::toggle,
+            onClickTogglePinned = screenModel::togglePinned,
         )
-
-        LaunchedEffect(Unit) {
-            screenModel.events.collectLatest { event ->
-                if (event is ExtensionDetailsEvent.Uninstalled) {
-                    navigator.pop()
-                }
-            }
-        }
     }
 }
