@@ -124,6 +124,7 @@ class MainActivity : BaseActivity() {
     private val chapterCache: ChapterCache by injectLazy()
 
     private val getIncognitoState: GetIncognitoState by injectLazy()
+    private val sourceManager: SourceManager by injectLazy()
 
     // To be checked by splash screen. If true then splash screen will be removed.
     var ready = false
@@ -319,6 +320,14 @@ class MainActivity : BaseActivity() {
             // SY -->
             ConfigureExhDialog(run = runExhConfigureDialog, onRunning = { runExhConfigureDialog = false })
             // SY <--
+        }
+
+        lifecycleScope.launch {
+            sourceManager.isInitialized
+                .filter { it }
+                .collectLatest {
+                    ready = true
+                }
         }
 
         val startTime = System.currentTimeMillis()
@@ -522,7 +531,6 @@ class MainActivity : BaseActivity() {
             lifecycleScope.launch { HomeScreen.openTab(tabToOpen) }
         }
 
-        ready = true
         return true
     }
 
