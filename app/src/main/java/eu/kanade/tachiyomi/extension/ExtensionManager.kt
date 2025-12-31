@@ -21,6 +21,7 @@ import exh.source.EH_SOURCE_ID
 import exh.source.EXH_SOURCE_ID
 import exh.source.MERGED_SOURCE_ID
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +31,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import logcat.LogPriority
 import tachiyomi.core.common.util.lang.withUIContext
 import tachiyomi.core.common.util.system.logcat
@@ -39,34 +41,20 @@ import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Locale
 
-/**
- * The manager of extensions installed as another apk which extend the available sources. It handles
- * the retrieval of remotely available extensions as well as installing, updating and removing them.
- * To avoid malicious distribution, every extension must be signed and it will only be loaded if its
- * signature is trusted, otherwise the user will be prompted with a warning to trust it before being
- * loaded.
- */
 class ExtensionManager(
     private val context: Context,
     private val preferences: SourcePreferences = Injekt.get(),
     private val trustExtension: TrustExtension = Injekt.get(),
 ) {
 
-    val scope = CoroutineScope(SupervisorJob())
+    // FIX: Tambahkan Dispatchers.IO
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
-    /**
-     * API where all the available extensions can be found.
-     */
     private val api = ExtensionApi()
-
-    /**
-     * The installer which installs, updates and uninstalls the extensions.
-     */
     private val installer by lazy { ExtensionInstaller(context) }
-
     private val iconMap = mutableMapOf<String, Drawable>()
 
     private val installedExtensionMapFlow = MutableStateFlow(emptyMap<String, Extension.Installed>())
@@ -75,15 +63,19 @@ class ExtensionManager(
     private val availableExtensionMapFlow = MutableStateFlow(emptyMap<String, Extension.Available>())
 
     // SY -->
+    // FIX: Menggunakan SharingStarted.Eagerly
     val availableExtensionsFlow = availableExtensionMapFlow.map { it.filterNotBlacklisted().values.toList() }
-        .stateIn(scope, SharingStarted.Lazily, availableExtensionMapFlow.value.values.toList())
+        .stateIn(scope, SharingStarted.Eagerly, availableExtensionMapFlow.value.values.toList())
     // SY <--
 
     private val untrustedExtensionMapFlow = MutableStateFlow(emptyMap<String, Extension.Untrusted>())
     val untrustedExtensionsFlow = untrustedExtensionMapFlow.mapExtensions(scope)
 
     init {
-        initExtensions()
+        // FIX: Launch in background
+        scope.launch {
+            initExtensions()
+        }
         ExtensionInstallReceiver(InstallationListener()).register(context)
     }
 
@@ -136,9 +128,6 @@ class ExtensionManager(
 
     fun getSourceData(id: Long) = availableExtensionsSourcesData[id]
 
-    /**
-     * Loads and registers the installed extensions.
-     */
     private fun initExtensions() {
         val extensions = ExtensionLoader.loadExtensions(context)
 
@@ -172,9 +161,6 @@ class ExtensionManager(
     }
     // EXH <--
 
-    /**
-     * Finds the available extensions in the [api] and updates [availableExtensionMapFlow].
-     */
     suspend fun findAvailableExtensions() {
         val extensions: List<Extension.Available> = try {
             api.findExtensions()
@@ -191,21 +177,11 @@ class ExtensionManager(
         setupAvailableExtensionsSourcesDataMap(extensions)
     }
 
-    /**
-     * Enables the additional sub-languages in the app first run. This addresses
-     * the issue where users still need to enable some specific languages even when
-     * the device language is inside that major group. As an example, if a user
-     * has a zh device language, the app will also enable zh-Hans and zh-Hant.
-     *
-     * If the user have already changed the enabledLanguages preference value once,
-     * the new languages will not be added to respect the user enabled choices.
-     */
     private fun enableAdditionalSubLanguages(extensions: List<Extension.Available>) {
         if (subLanguagesEnabledOnFirstRun || extensions.isEmpty()) {
             return
         }
 
-        // Use the source lang as some aren't present on the extension level.
         val availableLanguages = extensions
             .flatMap(Extension.Available::sources)
             .distinctBy(Extension.Available.Source::lang)
@@ -221,11 +197,6 @@ class ExtensionManager(
         subLanguagesEnabledOnFirstRun = true
     }
 
-    /**
-     * Sets the update field of the installed extensions with the given [availableExtensions].
-     *
-     * @param availableExtensions The list of extensions given by the [api].
-     */
     private fun updatedInstalledExtensionsStatuses(availableExtensions: List<Extension.Available>) {
         if (availableExtensions.isEmpty()) {
             preferences.extensionUpdatesCount().set(0)
@@ -266,24 +237,10 @@ class ExtensionManager(
         updatePendingUpdatesCount()
     }
 
-    /**
-     * Returns a flow of the installation process for the given extension. It will complete
-     * once the extension is installed or throws an error. The process will be canceled if
-     * unsubscribed before its completion.
-     *
-     * @param extension The extension to be installed.
-     */
     fun installExtension(extension: Extension.Available): Flow<InstallStep> {
         return installer.downloadAndInstall(api.getApkUrl(extension), extension)
     }
 
-    /**
-     * Returns a flow of the installation process for the given extension. It will complete
-     * once the extension is updated or throws an error. The process will be canceled if
-     * unsubscribed before its completion.
-     *
-     * @param extension The extension to be updated.
-     */
     fun updateExtension(extension: Extension.Installed): Flow<InstallStep> {
         val availableExt = availableExtensionMapFlow.value[extension.pkgName] ?: return emptyFlow()
         return installExtension(availableExt)
@@ -293,11 +250,6 @@ class ExtensionManager(
         installer.cancelInstall(extension.pkgName)
     }
 
-    /**
-     * Sets to "installing" status of an extension installation.
-     *
-     * @param downloadId The id of the download.
-     */
     fun setInstalling(downloadId: Long) {
         installer.updateInstallStep(downloadId, InstallStep.Installing)
     }
@@ -306,21 +258,10 @@ class ExtensionManager(
         installer.updateInstallStep(downloadId, step)
     }
 
-    /**
-     * Uninstalls the extension that matches the given package name.
-     *
-     * @param extension The extension to uninstall.
-     */
     fun uninstallExtension(extension: Extension) {
         installer.uninstallApk(extension.pkgName)
     }
 
-    /**
-     * Adds the given extension to the list of trusted extensions. It also loads in background the
-     * now trusted extensions.
-     *
-     * @param extension the extension to trust
-     */
     suspend fun trust(extension: Extension.Untrusted) {
         untrustedExtensionMapFlow.value[extension.pkgName] ?: return
 
@@ -333,11 +274,6 @@ class ExtensionManager(
             ?.let { registerNewExtension(it.extension) }
     }
 
-    /**
-     * Registers the given extension in this and the source managers.
-     *
-     * @param extension The extension to be registered.
-     */
     private fun registerNewExtension(extension: Extension.Installed) {
         // SY -->
         if (extension.isBlacklisted()) {
@@ -349,12 +285,6 @@ class ExtensionManager(
         installedExtensionMapFlow.value += extension
     }
 
-    /**
-     * Registers the given updated extension in this and the source managers previously removing
-     * the outdated ones.
-     *
-     * @param extension The extension to be registered.
-     */
     private fun registerUpdatedExtension(extension: Extension.Installed) {
         // SY -->
         if (extension.isBlacklisted()) {
@@ -366,20 +296,11 @@ class ExtensionManager(
         installedExtensionMapFlow.value += extension
     }
 
-    /**
-     * Unregisters the extension in this and the source managers given its package name. Note this
-     * method is called for every uninstalled application in the system.
-     *
-     * @param pkgName The package name of the uninstalled application.
-     */
     private fun unregisterExtension(pkgName: String) {
         installedExtensionMapFlow.value -= pkgName
         untrustedExtensionMapFlow.value -= pkgName
     }
 
-    /**
-     * Listener which receives events of the extensions being installed, updated or removed.
-     */
     private inner class InstallationListener : ExtensionInstallReceiver.Listener {
 
         override fun onExtensionInstalled(extension: Extension.Installed) {
@@ -405,9 +326,6 @@ class ExtensionManager(
         }
     }
 
-    /**
-     * Extension method to set the update field of an installed extension.
-     */
     private fun Extension.Installed.withUpdateCheck(): Extension.Installed {
         return if (updateExists()) {
             copy(hasUpdate = true)
@@ -434,7 +352,8 @@ class ExtensionManager(
 
     private operator fun <T : Extension> Map<String, T>.plus(extension: T) = plus(extension.pkgName to extension)
 
+    // FIX: Ubah Lazily ke Eagerly
     private fun <T : Extension> StateFlow<Map<String, T>>.mapExtensions(scope: CoroutineScope): StateFlow<List<T>> {
-        return map { it.values.toList() }.stateIn(scope, SharingStarted.Lazily, value.values.toList())
+        return map { it.values.toList() }.stateIn(scope, SharingStarted.Eagerly, value.values.toList())
     }
 }
