@@ -1,6 +1,7 @@
 plugins {
     id("mihon.library")
     kotlin("android")
+    kotlin("plugin.parcelize")
     kotlin("plugin.serialization")
 }
 
