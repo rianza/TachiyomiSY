@@ -73,6 +73,7 @@ import exh.syDebugVersion
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import logcat.AndroidLogcatLogger
 import logcat.LogPriority
 import logcat.LogcatLogger
 import mihon.core.firebase.FirebaseConfig
@@ -129,10 +130,6 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         InjektKoinBridge.startKoin(this)
         initExpensiveComponents(this)
         // SY <--
-
-        setupExhLogging() // EXH logging
-        LogcatLogger.install()
-        LogcatLogger.loggers += XLogLogcatLogger() // SY Redirect Logcat to XLog
 
         setupNotificationChannels()
 
@@ -192,9 +189,17 @@ class App : Application(), DefaultLifecycleObserver, SingletonImageLoader.Factor
         // Updates widget update
         WidgetManager(Injekt.get(), Injekt.get()).apply { init(scope) }
 
-        /*if (!LogcatLogger.isInstalled && networkPreferences.verboseLogging().get()) {
-            LogcatLogger.install(AndroidLogcatLogger(LogPriority.VERBOSE))
-        }*/
+        setupExhLogging() // EXH logging
+        if (!LogcatLogger.isInstalled) {
+            val minLogPriority = when {
+                networkPreferences.verboseLogging().get() -> LogPriority.VERBOSE
+                BuildConfig.DEBUG -> LogPriority.DEBUG
+                else -> LogPriority.INFO
+            }
+            LogcatLogger.install()
+            LogcatLogger.loggers += XLogLogcatLogger() // SY Redirect Logcat to XLog
+            LogcatLogger.loggers += AndroidLogcatLogger(minLogPriority)
+        }
 
         if (!WorkManager.isInitialized()) {
             WorkManager.initialize(this, Configuration.Builder().build())
