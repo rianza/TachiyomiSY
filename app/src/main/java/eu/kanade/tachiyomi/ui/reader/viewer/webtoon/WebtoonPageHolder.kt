@@ -1,11 +1,13 @@
 package eu.kanade.tachiyomi.ui.reader.viewer.webtoon
 
 import android.content.res.Resources
+import android.graphics.Bitmap
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.widget.FrameLayout
+import androidx.core.view.drawToBitmap
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updateMargins
@@ -17,7 +19,9 @@ import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderPageImageView
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
+import eu.kanade.tachiyomi.util.PreviewCache
 import eu.kanade.tachiyomi.util.system.dpToPx
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.flow.collectLatest
@@ -254,9 +258,39 @@ class WebtoonPageHolder(
     /**
      * Called when the image is decoded and going to be displayed.
      */
+        /**
+     * Called when the image is decoded and going to be displayed.
+     */
     private fun onImageDecoded() {
         progressContainer.isVisible = false
         removeErrorLayout()
+
+        val currentPage = page ?: return
+
+        scope.launch(Dispatchers.Main) {
+            try {
+                val snapshot = frame.drawToBitmap()
+
+                launch(Dispatchers.IO) {
+                    // Resize thumbnail
+                    val thumbnail = Bitmap.createScaledBitmap(
+                        snapshot,
+                        400,
+                        (snapshot.height * (400.0 / snapshot.width)).toInt(),
+                        true,
+                    )
+
+                    PreviewCache.savePreview(
+                        context.applicationContext,
+                        currentPage.chapter.chapter.id,
+                        currentPage.index,
+                        thumbnail,
+                    )
+                }
+            } catch (e: Throwable) {
+                // Ignore error
+            }
+        }
     }
 
     /**

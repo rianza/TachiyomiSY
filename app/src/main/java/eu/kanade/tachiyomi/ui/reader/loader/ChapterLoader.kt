@@ -19,9 +19,16 @@ import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
 import tachiyomi.source.local.LocalSource
 import tachiyomi.source.local.io.Format
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * Loader used to retrieve the [PageLoader] for a given chapter.
+ *
+ * Changes:
+ * - requestedPage is set as early as possible (before heavy I/O) so UI can immediately know target.
+ * - optional fast cached downloaded-check path can be used (skipCache = false) to reduce blocking.
  */
 class ChapterLoader(
     private val context: Context,
@@ -40,6 +47,9 @@ class ChapterLoader(
     /**
      * Assigns the chapter's page loader and loads the its pages. Returns immediately if the chapter
      * is already loaded.
+     *
+     * page: requested start page (nullable). If null, preserveReadingPosition prefs and last_page_read
+     * may be used to set the starting page.
      */
     suspend fun loadChapter(chapter: ReaderChapter /* SY --> */, page: Int? = null/* SY <-- */) {
         if (chapterIsReady(chapter)) {
@@ -47,9 +57,31 @@ class ChapterLoader(
         }
 
         chapter.state = ReaderChapter.State.Loading
+
+        // --- Set requestedPage as early as possible (before heavy I/O) ---
+        chapter.requestedPage = when {
+            page != null -> page
+            readerPrefs.preserveReadingPosition().get() && chapter.chapter.read -> chapter.chapter.last_page_read
+            else -> chapter.requestedPage
+        }
+
+        // --- Try to pick a loader quickly using cached downloaded-check (fast path) ---
+        // NOTE: This chooses an initial loader fast (skipCache = false). We will still do the
+        // authoritative check (skipCache = true) while loading pages if necessary.
+        val initialLoader = try {
+            pickLoaderFast(chapter)
+        } catch (e: Throwable) {
+            // fallback: ignore and continue with authoritative loader selection below
+            null
+        }
+        if (initialLoader != null) {
+            chapter.pageLoader = initialLoader
+        }
+
         withIOContext {
             logcat { "Loading pages for ${chapter.chapter.name}" }
             try {
+                // Authoritative loader selection (fresh check)
                 val loader = getPageLoader(chapter)
                 chapter.pageLoader = loader
 
@@ -60,15 +92,11 @@ class ChapterLoader(
                     throw Exception(context.stringResource(MR.strings.page_list_empty_error))
                 }
 
-                // If the chapter is partially read, set the starting page to the last the user read
-                // otherwise use the requested page.
-                if (!chapter.chapter.read /* --> EH */ ||
-                    readerPrefs
-                        .preserveReadingPosition()
-                        .get() ||
-                    page != null // <-- EH
-                ) {
-                    chapter.requestedPage = /* SY --> */ page ?: /* SY <-- */ chapter.chapter.last_page_read
+                // Ensure requestedPage still consistent (in case page param provided)
+                if (page != null) {
+                    chapter.requestedPage = page
+                } else if (readerPrefs.preserveReadingPosition().get() && chapter.chapter.read) {
+                    chapter.requestedPage = chapter.chapter.last_page_read
                 }
 
                 chapter.state = ReaderChapter.State.Loaded(pages)
@@ -80,6 +108,49 @@ class ChapterLoader(
     }
 
     /**
+     * Fast path loader selection using cached check (skipCache = false).
+     * This should be quick and used only to avoid blocking UI for a short time.
+     */
+    private fun pickLoaderFast(chapter: ReaderChapter): PageLoader? {
+        return try {
+            val dbChapter = chapter.chapter
+            val isDownloadedCached = try {
+                downloadManager.isChapterDownloaded(
+                    dbChapter.name,
+                    dbChapter.scanlator,
+                    dbChapter.url,
+                    /* SY --> */ manga.ogTitle, /* SY <-- */
+                    manga.source,
+                    skipCache = false,
+                )
+            } catch (_: Exception) {
+                false
+            }
+
+            when {
+                isDownloadedCached -> DownloadPageLoader(
+                    chapter,
+                    manga,
+                    source,
+                    downloadManager,
+                    downloadProvider,
+                )
+                source is LocalSource -> source.getFormat(chapter.chapter).let { format ->
+                    when (format) {
+                        is Format.Directory -> DirectoryPageLoader(format.file)
+                        is Format.Archive -> ArchivePageLoader(format.file.archiveReader(context))
+                        is Format.Epub -> EpubPageLoader(format.file.archiveReader(context))
+                    }
+                }
+                source is HttpSource -> HttpPageLoader(chapter, source)
+                else -> null
+            }
+        } catch (_: Throwable) {
+            null
+        }
+    }
+
+    /**
      * Checks [chapter] to be loaded based on present pages and loader in addition to state.
      */
     private fun chapterIsReady(chapter: ReaderChapter): Boolean {
@@ -87,7 +158,8 @@ class ChapterLoader(
     }
 
     /**
-     * Returns the page loader to use for this [chapter].
+     * Returns the page loader to use for this [chapter]. This is the authoritative selection and
+     * includes fresh checks (skipCache = true) so it's accurate.
      */
     private fun getPageLoader(chapter: ReaderChapter): PageLoader {
         val dbChapter = chapter.chapter

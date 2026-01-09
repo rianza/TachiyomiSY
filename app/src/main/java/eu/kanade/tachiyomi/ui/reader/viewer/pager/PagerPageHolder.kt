@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.view.LayoutInflater
+import androidx.core.view.drawToBitmap
 import androidx.core.view.isVisible
 import eu.kanade.presentation.util.formattedMessage
 import eu.kanade.tachiyomi.databinding.ReaderErrorBinding
@@ -13,7 +14,9 @@ import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderPageImageView
 import eu.kanade.tachiyomi.ui.reader.viewer.ReaderProgressIndicator
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
+import eu.kanade.tachiyomi.util.PreviewCache
 import eu.kanade.tachiyomi.widget.ViewPagerAdapter
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -416,6 +419,36 @@ class PagerPageHolder(
     override fun onImageLoaded() {
         super.onImageLoaded()
         progressIndicator?.hide()
+
+        scope.launch(Dispatchers.Main) {
+            try {
+                val currentPage = page
+
+                // Take a snapshot of the current view (screen resolution, not the image's native resolution)
+                // This is lighter and faster for thumbnails.
+                val snapshot = this@PagerPageHolder.drawToBitmap()
+
+                // Move to background thread to resize & save
+                launch(Dispatchers.IO) {
+                    // Resize to 400px wide (adjust height) to make the file small
+                    val thumbnail = Bitmap.createScaledBitmap(
+                        snapshot, 
+                        400, 
+                        (snapshot.height * (400.0 / snapshot.width)).toInt(), 
+                        true,
+                    )
+
+                    PreviewCache.savePreview(
+                        context.applicationContext,
+                        currentPage.chapter.chapter.id,
+                        currentPage.index,
+                        thumbnail,
+                    )
+                }
+            } catch (e: Throwable) {
+                // Ignore errors when saving cache so as not to interfere with reading
+            }
+        }
     }
 
     /**
