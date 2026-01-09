@@ -97,7 +97,6 @@ class ChapterLoader(
             dbChapter.url,
             /* SY --> */ manga.ogTitle, /* SY <-- */
             manga.source,
-            skipCache = true,
         )
         return when {
             // SY -->
@@ -114,7 +113,6 @@ class ChapterLoader(
                     chapterUrl = chapter.chapter.url,
                     mangaTitle = manga.ogTitle,
                     sourceId = manga.source,
-                    skipCache = true,
                 )
                 when {
                     isMergedMangaDownloaded -> DownloadPageLoader(
