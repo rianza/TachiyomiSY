@@ -45,6 +45,7 @@ import androidx.core.content.getSystemService
 import androidx.core.graphics.Insets
 import androidx.core.net.toUri
 import androidx.core.transition.doOnEnd
+import androidx.core.view.isVisible
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -92,6 +93,7 @@ import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.VerticalPagerViewer
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonViewer
 import eu.kanade.tachiyomi.ui.webview.WebViewActivity
+import eu.kanade.tachiyomi.util.PreviewCache
 import eu.kanade.tachiyomi.util.system.isNightMode
 import eu.kanade.tachiyomi.util.system.openInBrowser
 import eu.kanade.tachiyomi.util.system.toShareIntent
@@ -104,6 +106,7 @@ import exh.util.mangaType
 import kotlinx.collections.immutable.persistentSetOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.collections.immutable.toImmutableSet
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -115,6 +118,7 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.sample
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import logcat.LogPriority
 import tachiyomi.core.common.Constants
 import tachiyomi.core.common.i18n.pluralStringResource
@@ -954,7 +958,11 @@ class ReaderActivity : BaseActivity() {
      */
     @SuppressLint("RestrictedApi")
     private fun setChapters(viewerChapters: ViewerChapters) {
+        binding.previewOverlay.isVisible = false
+        binding.previewOverlay.setImageBitmap(null)
+
         binding.readerContainer.removeView(loadingIndicator)
+
         // SY -->
         val state = viewModel.state.value
         if (state.indexChapterToShift != null && state.indexPageToShift != null) {
@@ -1026,6 +1034,9 @@ class ReaderActivity : BaseActivity() {
      * should be automatically shown.
      */
     private fun loadNextChapter() {
+        val nextChapter = viewModel.state.value.viewerChapters?.nextChapter
+        showChapterPreview(nextChapter)
+
         lifecycleScope.launch {
             viewModel.loadNextChapter()
             moveToPageIndex(0)
@@ -1037,6 +1048,9 @@ class ReaderActivity : BaseActivity() {
      * should be automatically shown.
      */
     private fun loadPreviousChapter() {
+        val prevChapter = viewModel.state.value.viewerChapters?.prevChapter
+        showChapterPreview(prevChapter)
+
         lifecycleScope.launch {
             viewModel.loadPreviousChapter()
             moveToPageIndex(0)
@@ -1215,6 +1229,35 @@ class ReaderActivity : BaseActivity() {
             ?: Insets.NONE
 
         setPadding(insets.left, insets.top, insets.right, insets.bottom)
+    }
+
+    private fun showChapterPreview(targetChapter: ReaderChapter?) {
+        val chapter = targetChapter ?: return
+        val chapterId = chapter.chapter.id ?: return
+
+        val startPage = if (readerPreferences.preserveReadingPosition().get() && chapter.chapter.read)
+            chapter.chapter.last_page_read 
+        else 
+            0
+
+        binding.previewOverlay.isVisible = true 
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val previewBitmap = PreviewCache.loadPreviewBitmap(
+                applicationContext, 
+                chapterId, 
+                startPage,
+            )
+
+            withContext(Dispatchers.Main) {
+                if (binding.previewOverlay.isVisible) {
+                    if (previewBitmap != null) {
+                        binding.previewOverlay.setImageBitmap(previewBitmap)
+                        binding.previewOverlay.alpha = 1f
+                    }
+                }
+            }
+        }
     }
 
     /**
