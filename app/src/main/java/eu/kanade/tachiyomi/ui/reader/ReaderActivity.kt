@@ -108,6 +108,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
@@ -227,13 +228,20 @@ class ReaderActivity : BaseActivity() {
             NotificationReceiver.dismissNotification(this, manga.hashCode(), Notifications.ID_NEW_CHAPTERS)
 
             lifecycleScope.launchNonCancellable {
-                val initResult = viewModel.init(manga, chapter/* SY --> */, page/* SY <-- */)
-                if (!initResult.getOrDefault(false)) {
-                    val exception = initResult.exceptionOrNull() ?: IllegalStateException("Unknown err")
-                    withUIContext {
-                        setInitialChapterError(exception)
+                // SY -->
+                sourceManager.isInitialized
+                    .filter { it }
+                    .collectLatest {
+                        // SY <--
+                        val initResult = viewModel.init(manga, chapter/* SY --> */, page/* SY <-- */)
+                        if (!initResult.getOrDefault(false)) {
+                            val exception = initResult.exceptionOrNull()
+                                ?: IllegalStateException("Unknown err")
+                            withUIContext {
+                                setInitialChapterError(exception)
+                            }
+                        }
                     }
-                }
             }
         }
 

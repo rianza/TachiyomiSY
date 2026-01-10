@@ -106,6 +106,7 @@ import tachiyomi.core.common.util.lang.launchIO
 import tachiyomi.core.common.util.system.logcat
 import tachiyomi.domain.library.service.LibraryPreferences
 import tachiyomi.domain.release.interactor.GetApplicationRelease
+import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.injectLazy
@@ -125,8 +126,11 @@ class MainActivity : BaseActivity() {
 
     private val getIncognitoState: GetIncognitoState by injectLazy()
 
+    private val sourceManager: SourceManager by injectLazy()
+
     // To be checked by splash screen. If true then splash screen will be removed.
     var ready = false
+        private set
 
     private var navigator: Navigator? = null
 
@@ -328,6 +332,15 @@ class MainActivity : BaseActivity() {
         }
         setSplashScreenExitAnimation(splashScreen)
 
+        // Make sure we're always in sync with source manager
+        lifecycleScope.launch {
+            sourceManager.isInitialized
+                .filter { it }
+                .collectLatest {
+                    ready = true
+                }
+        }
+
         if (isLaunch && libraryPreferences.autoClearChapterCache().get()) {
             lifecycleScope.launchIO {
                 chapterCache.clear()
@@ -522,7 +535,6 @@ class MainActivity : BaseActivity() {
             lifecycleScope.launch { HomeScreen.openTab(tabToOpen) }
         }
 
-        ready = true
         return true
     }
 
