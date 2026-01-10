@@ -96,13 +96,35 @@ internal class HttpPageLoader(
             // Don't trust sources and use our own indexing
             ReaderPage(index, page.url, page.imageUrl)
         }
+
+        // If image is already in chapter cache, set stream immediately and mark Ready so reader
+        // doesn't need to re-download or re-queue the page.
+        rp.forEach { rpage ->
+            val imageUrl = rpage.imageUrl
+            if (!imageUrl.isNullOrEmpty() && chapterCache.isImageInCache(imageUrl)) {
+                // Use cached file as stream source immediately
+                rpage.stream = { chapterCache.getImageFile(imageUrl).inputStream() }
+                rpage.status = Page.State.Ready
+            }
+        }
+
+        // If aggressive loading setting is enabled, queue pages as before.
         if (readerPreferences.aggressivePageLoading().get()) {
             rp.forEach {
                 if (it.status == Page.State.Queue) {
                     queue.offer(PriorityPage(it, 0))
                 }
             }
+        } else {
+            // Ensure first N pages are enqueued for prefetch so they start downloading fast.
+            // This helps when user opens chapter: the most likely pages are prefetched.
+            rp.take(preloadSize).forEach {
+                if (it.status == Page.State.Queue) {
+                    queue.offer(PriorityPage(it, 0))
+                }
+            }
         }
+
         return rp
         // SY <--
     }
