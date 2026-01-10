@@ -11,6 +11,10 @@ import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import exh.source.isEhBasedSource
 import exh.util.DataSaver
 import exh.util.DataSaver.Companion.getImage
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -58,6 +62,47 @@ internal class HttpPageLoader(
     private val dataSaver = DataSaver(source, sourcePreferences)
     // SY <--
 
+    private val persistMutex = Mutex()
+
+    @Volatile
+    private var persistJob: Job? = null
+
+    private suspend fun persistPageList(pages: List<ReaderPage>) {
+        val domainChapter = chapter.chapter.toDomainChapter() ?: return
+        val pagesToSave = pages.map { Page(it.index, it.url, it.imageUrl) }
+        chapterCache.putPageListToCache(domainChapter, pagesToSave)
+    }
+
+    private fun persistPageListImmediate(pages: List<ReaderPage>) {
+        persistJob?.cancel()
+        persistJob = scope.launchIO {
+            persistMutex.withLock {
+                runCatching { persistPageList(pages) }
+            }
+        }
+    }
+
+    private fun persistPageListDebounced(delayMs: Long = 800L) {
+        persistJob?.cancel()
+        persistJob = scope.launchIO {
+            delay(delayMs)
+            val pages = chapter.pages ?: return@launchIO
+            persistMutex.withLock {
+                runCatching { persistPageList(pages) }
+            }
+        }
+    }
+
+    fun persistNow() {
+        persistJob?.cancel()
+        val pages = chapter.pages ?: return
+        scope.launchIO {
+            persistMutex.withLock {
+                runCatching { persistPageList(pages) }
+            }
+        }
+    }
+
     init {
         // EXH -->
         repeat(readerPreferences.readerThreads().get()) {
@@ -96,13 +141,37 @@ internal class HttpPageLoader(
             // Don't trust sources and use our own indexing
             ReaderPage(index, page.url, page.imageUrl)
         }
+
+        // If image is already in chapter cache, set stream immediately and mark Ready so reader
+        // doesn't need to re-download or re-queue the page.
+        rp.forEach { rpage ->
+            val imageUrl = rpage.imageUrl
+            if (!imageUrl.isNullOrEmpty() && chapterCache.isImageInCache(imageUrl)) {
+                // Use cached file as stream source immediately
+                rpage.stream = { chapterCache.getImageFile(imageUrl).inputStream() }
+                rpage.status = Page.State.Ready
+            }
+        }
+
+        // If aggressive loading setting is enabled, queue pages as before.
         if (readerPreferences.aggressivePageLoading().get()) {
             rp.forEach {
                 if (it.status == Page.State.Queue) {
                     queue.offer(PriorityPage(it, 0))
                 }
             }
+        } else {
+            // Ensure first N pages are enqueued for prefetch so they start downloading fast.
+            // This helps when user opens chapter: the most likely pages are prefetched.
+            rp.take(preloadSize).forEach {
+                if (it.status == Page.State.Queue) {
+                    queue.offer(PriorityPage(it, 0))
+                }
+            }
         }
+
+        persistPageListImmediate(rp)
+
         return rp
         // SY <--
     }
@@ -163,6 +232,7 @@ internal class HttpPageLoader(
 
     override fun recycle() {
         super.recycle()
+        persistJob?.cancel()
         scope.cancel()
         queue.clear()
 
@@ -214,6 +284,7 @@ internal class HttpPageLoader(
             if (page.imageUrl.isNullOrEmpty()) {
                 page.status = Page.State.LoadPage
                 page.imageUrl = source.getImageUrl(page)
+                persistPageListDebounced()
             }
             val imageUrl = page.imageUrl!!
 

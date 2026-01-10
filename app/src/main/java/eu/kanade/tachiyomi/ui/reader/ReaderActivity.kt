@@ -473,6 +473,11 @@ class ReaderActivity : BaseActivity() {
         super.onPause()
     }
 
+    override fun onStop() {
+        (viewModel.state.value.currentChapter?.pageLoader as? HttpPageLoader)?.persistNow()
+        super.onStop()
+    }
+
     /**
      * Set menu visibility again on activity resume to apply immersive mode again if needed.
      * Helps with rotations.
