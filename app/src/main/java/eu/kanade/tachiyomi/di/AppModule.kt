@@ -69,7 +69,6 @@ class AppModule(val app: Application) : InjektModule {
             if (securityPreferences.encryptDatabase().get()) {
                 System.loadLibrary("sqlcipher")
             }
-
             // SY <--
             AndroidSqliteDriver(
                 schema = Database.Schema,
@@ -81,12 +80,13 @@ class AppModule(val app: Application) : InjektModule {
                     LEGACY_DATABASE_NAME
                 },
                 factory = if (securityPreferences.encryptDatabase().get()) {
+                    // If Encryption is on, keep using SQLCipher
                     SupportOpenHelperFactory(CbzCrypto.getDecryptedPasswordSql(), null, false, 25)
-                } else if (BuildConfig.DEBUG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    // Support database inspector in Android Studio
-                    FrameworkSQLiteOpenHelperFactory()
                 } else {
-                    RequerySQLiteOpenHelperFactory()
+                    // IF DEFAULT (OFF)
+                    // Forces use of the default Android Framework.
+                    // This is much more stable when multitasking/moving apps than Requery.
+                    FrameworkSQLiteOpenHelperFactory()
                 },
                 // SY <--
                 callback = object : AndroidSqliteDriver.Callback(Database.Schema) {
