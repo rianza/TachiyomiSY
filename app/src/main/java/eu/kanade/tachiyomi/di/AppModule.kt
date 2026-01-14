@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.di
 
 import android.app.Application
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.framework.FrameworkSQLiteOpenHelperFactory
@@ -80,13 +81,19 @@ class AppModule(val app: Application) : InjektModule {
                 } else {
                     LEGACY_DATABASE_NAME
                 },
-                factory = if (securityPreferences.encryptDatabase().get()) {
-                    SupportOpenHelperFactory(CbzCrypto.getDecryptedPasswordSql(), null, false, 25)
-                } else if (BuildConfig.DEBUG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    // Support database inspector in Android Studio
-                    FrameworkSQLiteOpenHelperFactory()
-                } else {
-                    RequerySQLiteOpenHelperFactory()
+                factory = when {
+                    securityPreferences.encryptDatabase().get() -> {
+                        Log.i("DB_INIT", "Using SupportOpenHelperFactory (SQLCipher)")
+                        SupportOpenHelperFactory(CbzCrypto.getDecryptedPasswordSql(), null, false, 25)
+                    }
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                        Log.i("DB_INIT", "Using FrameworkSQLiteOpenHelperFactory on SDK ${Build.VERSION.SDK_INT}")
+                        FrameworkSQLiteOpenHelperFactory()
+                    }
+                    else -> {
+                        Log.i("DB_INIT", "Using RequerySQLiteOpenHelperFactory on SDK ${Build.VERSION.SDK_INT}")
+                        RequerySQLiteOpenHelperFactory()
+                    }
                 },
                 // SY <--
                 callback = object : AndroidSqliteDriver.Callback(Database.Schema) {
@@ -95,6 +102,7 @@ class AppModule(val app: Application) : InjektModule {
                         setPragma(db, "foreign_keys = ON")
                         setPragma(db, "journal_mode = WAL")
                         setPragma(db, "synchronous = NORMAL")
+                        Log.i("DB_INIT", "onOpen completed for DB name=${if (securityPreferences.encryptDatabase().get()) CbzCrypto.DATABASE_NAME else LEGACY_DATABASE_NAME}")
                     }
                     private fun setPragma(db: SupportSQLiteDatabase, pragma: String) {
                         val cursor = db.query("PRAGMA $pragma")
