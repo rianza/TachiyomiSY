@@ -25,7 +25,6 @@ import eu.kanade.tachiyomi.network.NetworkHelper
 import eu.kanade.tachiyomi.source.AndroidSourceManager
 import eu.kanade.tachiyomi.util.storage.CbzCrypto
 import exh.eh.EHentaiUpdateHelper
-import io.requery.android.database.sqlite.RequerySQLiteOpenHelperFactory
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.protobuf.ProtoBuf
 import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
@@ -82,11 +81,8 @@ class AppModule(val app: Application) : InjektModule {
                 },
                 factory = if (securityPreferences.encryptDatabase().get()) {
                     SupportOpenHelperFactory(CbzCrypto.getDecryptedPasswordSql(), null, false, 25)
-                } else if (BuildConfig.DEBUG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    // Support database inspector in Android Studio
-                    FrameworkSQLiteOpenHelperFactory()
                 } else {
-                    RequerySQLiteOpenHelperFactory()
+                    FrameworkSQLiteOpenHelperFactory()
                 },
                 // SY <--
                 callback = object : AndroidSqliteDriver.Callback(Database.Schema) {
