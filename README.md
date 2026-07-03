@@ -1,6 +1,6 @@
 | Preview Builds | Release Builds | Mihon Support Server |
 |-------|----------|----------|
-| [![Preview](https://github.com/jobobby04/TachiyomiSYPreview/workflows/Remote%20Dispatch%20Build%20App/badge.svg)](https://github.com/jobobby04/TachiyomiSYPreview/releases) | [![stable release](https://img.shields.io/github/release/jobobby04/tachiyomisy.svg?maxAge=3600&label=download)](https://github.com/jobobby04/tachiyomisy/releases/latest) | [![Discord](https://img.shields.io/discord/1195734228319617024.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/mihon) |
+| [![Preview](https://github.com/rianza/TachiyomiSYPreview/workflows/Remote%20Dispatch%20Build%20App/badge.svg)](https://github.com/rianza/TachiyomiSYPreview/releases) | [![stable release](https://img.shields.io/github/release/rianza/tachiyomisy.svg?maxAge=3600&label=download)](https://github.com/rianza/tachiyomisy/releases/latest) | [![Discord](https://img.shields.io/discord/1195734228319617024.svg?label=discord&labelColor=7289da&color=2c2f33&style=flat)](https://discord.gg/mihon) |
 
 
 # ![app icon](./.github/readme-images/app-icon.png)TachiyomiSY
@@ -63,9 +63,9 @@ Additional features for some extensions, features include custom description, op
 * LANraragi
 
 ## Download
-Get the app from our [releases page](https://github.com/jobobby04/tachiyomisy/releases/latest).
+Get the app from our [releases page](https://github.com/rianza/tachiyomisy/releases/latest).
 
-If you want to try new features before they get to the stable release, you can download the preview version [here](https://github.com/jobobby04/tachiyomisypreview/releases).
+If you want to try new features before they get to the stable release, you can download the preview version [here](https://github.com/rianza/tachiyomisypreview/releases).
 
 ## Translation
 Feel free to translate the project on [Weblate](https://hosted.weblate.org/projects/mihon/tachiyomisy/)
@@ -82,7 +82,7 @@ Please make sure to read the full guidelines. Your issue may be closed without w
 
 <details><summary>Issues</summary>
 
-1. **Before reporting a new issue, take a look at the [FAQ](https://mihon.app/docs/faq/general), the [changelog](https://github.com/jobobby04/tachiyomisy/releases) and the already opened [issues](https://github.com/jobobby04/tachiyomisy/issues).**
+1. **Before reporting a new issue, take a look at the [FAQ](https://mihon.app/docs/faq/general), the [changelog](https://github.com/rianza/tachiyomisy/releases) and the already opened [issues](https://github.com/rianza/tachiyomisy/issues).**
 2. If you are unsure, ask here: [![Discord](https://img.shields.io/discord/1195734228319617024.svg)](https://discord.gg/mihon)
 
 </details>
@@ -97,7 +97,7 @@ Please make sure to read the full guidelines. Your issue may be closed without w
 * If it could be device-dependent, try reproducing on another device (if possible)
 * Don't group unrelated requests into one issue
 
-Use the [issue forms](https://github.com/jobobby04/TachiyomiSY/issues/new/choose) to submit a bug.
+Use the [issue forms](https://github.com/rianza/TachiyomiSY/issues/new/choose) to submit a bug.
 
 </details>
 
