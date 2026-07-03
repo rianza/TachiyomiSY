@@ -52,6 +52,9 @@ jobs:
       - name: Build app
         run: ./gradlew assembleRelease
 
+      - name: Build app (FOSS)
+        run: ./gradlew assembleFoss
+
       - name: Run unit tests
         run: ./gradlew testReleaseUnitTest
 
@@ -59,6 +62,17 @@ jobs:
         uses: r0adkll/sign-android-release@v1
         with:
           releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
+          alias: ${{ secrets.ALIAS }}
+          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
+          keyPassword: ${{ secrets.KEY_PASSWORD }}
+        env:
+          BUILD_TOOLS_VERSION: '35.0.1'
+
+      - name: Sign APK (FOSS)
+        uses: r0adkll/sign-android-release@v1
+        with:
+          releaseDirectory: app/build/outputs/apk/foss
           signingKeyBase64: ${{ secrets.SIGNING_KEY }}
           alias: ${{ secrets.ALIAS }}
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
@@ -76,6 +90,8 @@ jobs:
           mv app/build/outputs/apk/release/app-x86-release-unsigned-signed.apk TachiyomiSY-x86.apk
           mv app/build/outputs/apk/release/app-x86_64-release-unsigned-signed.apk TachiyomiSY-x86_64.apk
 
+          mv app/build/outputs/apk/foss/app-universal-foss-unsigned-signed.apk TachiyomiSY-foss.apk
+
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
@@ -92,6 +108,7 @@ jobs:
             TachiyomiSY-armeabi-v7a.apk
             TachiyomiSY-x86.apk
             TachiyomiSY-x86_64.apk
+            TachiyomiSY-foss.apk
           draft: true
           prerelease: false
         env:
