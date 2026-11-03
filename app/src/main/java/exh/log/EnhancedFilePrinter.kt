@@ -76,10 +76,17 @@ class EnhancedFilePrinter internal constructor(
                 if (file == null || writer.open(file).not()) {
                     return
                 }
+            } else if (!writer.isOpened) {
+                // The stream is closed after every write, reopen the same file when needed.
+                val file = writer.file ?: return
+                if (writer.open(file).not()) {
+                    return
+                }
             }
         }
         val flattenedLog = flattener.flatten(timeMillis, logLevel, tag, msg).toString()
         writer.appendLog(flattenedLog)
+        writer.closeStream()
     }
 
     private val maxTimeMillis = 7.days.inWholeMilliseconds
@@ -300,6 +307,28 @@ class EnhancedFilePrinter internal constructor(
                 }
             }
             return true
+        }
+
+        /**
+         * Close the current log file stream, keeping the file handle around.
+         *
+         * Needed because [UniFile.openOutputStream] on a document URI holds a stable content
+         * provider connection until the stream is closed; a provider process that dies kills
+         * its still connected clients, so the stream must not stay open between log entries.
+         *
+         * @return true if closed successfully, false otherwise
+         */
+        fun closeStream(): Boolean {
+            val currentWriter = bufferedWriter ?: return true
+            return try {
+                currentWriter.close()
+                true
+            } catch (e: IOException) {
+                e.printStackTrace()
+                false
+            } finally {
+                bufferedWriter = null
+            }
         }
 
         /**
