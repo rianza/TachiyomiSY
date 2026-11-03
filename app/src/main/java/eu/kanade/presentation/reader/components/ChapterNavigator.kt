@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,9 +12,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.SkipNext
-import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonColors
@@ -29,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -46,6 +45,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import eu.kanade.presentation.theme.TachiyomiPreviewTheme
 import eu.kanade.presentation.util.isTabletUi
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.SkipNext
+import mihon.icons.materialsymbols.rounded.SkipPrevious
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.stringResource
 import kotlin.math.roundToInt
@@ -73,16 +75,25 @@ fun ChapterNavigator(
     // SY <--
     totalPages: Int,
     onPageIndexChange: (Int) -> Unit,
+    onPageIndexChangeFinished: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
 
-    val state = rememberSliderState(
-        value = currentPage.toFloat(),
-        steps = totalPages - 2,
-        valueRange = 1f..totalPages.toFloat(),
-    )
-    state.value = currentPage.toFloat()
-    state.onValueChange = { onPageIndexChange(it.roundToInt() - 1) }
+    val state = if (totalPages > 1) {
+        key(totalPages) {
+            rememberSliderState(
+                value = currentPage.toFloat(),
+                steps = totalPages - 2,
+                trackRange = 1f..totalPages.toFloat(),
+            )
+        }
+            .also {
+                it.value = currentPage.toFloat()
+            }
+    } else {
+        null
+    }
 
     val interactionSource = remember { MutableInteractionSource() }
     val sliderDragged by interactionSource.collectIsDraggedAsState()
@@ -104,8 +115,10 @@ fun ChapterNavigator(
         disabledContainerColor = backgroundColor,
     )
 
+    val onPageChange: (Int) -> Unit = { onPageIndexChange(it - 1) }
+
     if (type.isHorizontal()) {
-        ChapterNavigator(
+        HorizontalChapterNavigator(
             isRtl = type == ChapterNavigatorType.HORIZONTAL_RTL,
             state = state,
             onNextChapter = onNextChapter,
@@ -116,10 +129,13 @@ fun ChapterNavigator(
             currentPageText = currentPageText,
             // SY <--
             totalPages = totalPages,
+            onPageChange = onPageChange,
+            onPageChangeFinished = onPageIndexChangeFinished,
             interactionSource = interactionSource,
             mainAxisPadding = mainAxisPadding,
             backgroundColor = backgroundColor,
             buttonColor = buttonColor,
+            modifier = modifier,
         )
     } else {
         VerticalChapterNavigator(
@@ -132,18 +148,21 @@ fun ChapterNavigator(
             currentPageText = currentPageText,
             // SY <--
             totalPages = totalPages,
+            onPageChange = onPageChange,
+            onPageChangeFinished = onPageIndexChangeFinished,
             interactionSource = interactionSource,
             mainAxisPadding = mainAxisPadding,
             backgroundColor = backgroundColor,
             buttonColor = buttonColor,
+            modifier = modifier,
         )
     }
 }
 
 @Composable
-fun ChapterNavigator(
+fun HorizontalChapterNavigator(
     isRtl: Boolean,
-    state: SliderState,
+    state: SliderState?,
     onNextChapter: () -> Unit,
     enabledNext: Boolean,
     onPreviousChapter: () -> Unit,
@@ -152,17 +171,20 @@ fun ChapterNavigator(
     currentPageText: String,
     // SY <--
     totalPages: Int,
+    onPageChange: (Int) -> Unit,
+    onPageChangeFinished: () -> Unit,
     interactionSource: MutableInteractionSource,
     mainAxisPadding: Dp,
     backgroundColor: Color,
     buttonColor: IconButtonColors,
+    modifier: Modifier = Modifier,
 ) {
     val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
 
     // We explicitly handle direction based on the reader viewer rather than the system direction
     CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
         Row(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
                 .padding(horizontal = mainAxisPadding),
             verticalAlignment = Alignment.CenterVertically,
@@ -173,14 +195,14 @@ fun ChapterNavigator(
                 colors = buttonColor,
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.SkipPrevious,
+                    imageVector = MaterialSymbols.Rounded.SkipPrevious,
                     contentDescription = stringResource(
                         if (isRtl) MR.strings.action_next_chapter else MR.strings.action_previous_chapter,
                     ),
                 )
             }
 
-            if (totalPages > 1) {
+            if (state != null) {
                 CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                     Row(
                         modifier = Modifier
@@ -190,15 +212,25 @@ fun ChapterNavigator(
                             .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        // SY -->
-                        Text(text = currentPageText)
-                        // SY <--
+                        Box(contentAlignment = Alignment.CenterEnd) {
+                            // SY -->
+                            Text(text = currentPageText)
+                            // Taking up full length so the slider doesn't shift when 'currentPage' length changes,
+                            // including the double page form
+                            Text(
+                                text = if ('-' in currentPageText) "$totalPages-$totalPages" else totalPages.toString(),
+                                color = Color.Transparent,
+                            )
+                            // SY <--
+                        }
 
                         Slider(
                             state = state,
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(horizontal = 8.dp),
+                            onValueChange = { onPageChange(it.roundToInt()) },
+                            onValueChangeFinished = onPageChangeFinished,
                             interactionSource = interactionSource,
                         )
 
@@ -215,7 +247,7 @@ fun ChapterNavigator(
                 colors = buttonColor,
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.SkipNext,
+                    imageVector = MaterialSymbols.Rounded.SkipNext,
                     contentDescription = stringResource(
                         if (isRtl) MR.strings.action_previous_chapter else MR.strings.action_next_chapter,
                     ),
@@ -227,7 +259,7 @@ fun ChapterNavigator(
 
 @Composable
 fun VerticalChapterNavigator(
-    state: SliderState,
+    state: SliderState?,
     onNextChapter: () -> Unit,
     enabledNext: Boolean,
     onPreviousChapter: () -> Unit,
@@ -236,13 +268,16 @@ fun VerticalChapterNavigator(
     currentPageText: String,
     // SY <--
     totalPages: Int,
+    onPageChange: (Int) -> Unit,
+    onPageChangeFinished: () -> Unit,
     interactionSource: MutableInteractionSource,
     mainAxisPadding: Dp,
     backgroundColor: Color,
     buttonColor: IconButtonColors,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxHeight()
             .padding(vertical = mainAxisPadding),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -253,13 +288,13 @@ fun VerticalChapterNavigator(
             colors = buttonColor,
         ) {
             Icon(
-                imageVector = Icons.Outlined.SkipPrevious,
+                imageVector = MaterialSymbols.Rounded.SkipPrevious,
                 contentDescription = stringResource(MR.strings.action_previous_chapter),
                 modifier = Modifier.rotate(90f),
             )
         }
 
-        if (totalPages > 1) {
+        if (state != null) {
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -277,6 +312,8 @@ fun VerticalChapterNavigator(
                     modifier = Modifier
                         .weight(1f)
                         .padding(vertical = 8.dp),
+                    onValueChange = { onPageChange(it.roundToInt()) },
+                    onValueChangeFinished = onPageChangeFinished,
                     interactionSource = interactionSource,
                 )
 
@@ -292,7 +329,7 @@ fun VerticalChapterNavigator(
             colors = buttonColor,
         ) {
             Icon(
-                imageVector = Icons.Outlined.SkipNext,
+                imageVector = MaterialSymbols.Rounded.SkipNext,
                 contentDescription = stringResource(MR.strings.action_next_chapter),
                 modifier = Modifier.rotate(90f),
             )
@@ -314,6 +351,7 @@ private fun ChapterNavigatorPreview() {
             currentPage = currentPage,
             totalPages = 10,
             onPageIndexChange = { currentPage = (it + 1) },
+            onPageIndexChangeFinished = {},
             // SY -->
             currentPageText = "1",
             // SY <--

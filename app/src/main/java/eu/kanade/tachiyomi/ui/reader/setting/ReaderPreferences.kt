@@ -3,13 +3,21 @@ package eu.kanade.tachiyomi.ui.reader.setting
 import android.os.Build
 import androidx.compose.ui.graphics.BlendMode
 import dev.icerock.moko.resources.StringResource
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import eu.kanade.tachiyomi.ui.reader.viewer.pager.PagerConfig
+import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuShader
+import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuShaders
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.preference.getEnum
+import tachiyomi.core.common.preference.getEnumSet
 import tachiyomi.i18n.MR
 import tachiyomi.i18n.sy.SYMR
 
+@Inject
+@SingleIn(AppScope::class)
 class ReaderPreferences(
     preferenceStore: PreferenceStore,
 ) {
@@ -21,6 +29,11 @@ class ReaderPreferences(
 
     val pageTransitionsWebtoon: Preference<Boolean> = preferenceStore.getBoolean("pref_enable_transitions_webtoon_key", true)
     // SY <--
+
+    val loadAheadOnlyOverWifi: Preference<Boolean> = preferenceStore.getBoolean(
+        "pref_reader_load_ahead_only_over_wifi",
+        true,
+    )
 
     val flashOnPageChange: Preference<Boolean> = preferenceStore.getBoolean("pref_reader_flash", false)
 
@@ -34,14 +47,19 @@ class ReaderPreferences(
 
     val showPageNumber: Preference<Boolean> = preferenceStore.getBoolean("pref_show_page_number_key", true)
 
-    val verticalNavigatorForLongStrip: Preference<Boolean> = preferenceStore.getBoolean(
-        "pref_webtoon_vertical_navigator",
-        true,
+    val verticalNavigator: Preference<Set<ReadingMode>> = preferenceStore.getEnumSet(
+        "pref_vertical_navigator",
+        emptySet(),
     )
 
     val verticalNavigatorOnLeft: Preference<Boolean> = preferenceStore.getBoolean(
-        "pref_webtoon_vertical_navigator_on_left",
+        "pref_vertical_navigator_on_left",
         false,
+    )
+
+    val verticalNavigatorHeight: Preference<Int> = preferenceStore.getInt(
+        "pref_vertical_navigator_height",
+        65,
     )
 
     val showReadingMode: Preference<Boolean> = preferenceStore.getBoolean("pref_show_reading_mode", true)
@@ -132,6 +150,11 @@ class ReaderPreferences(
         false,
     )
 
+    val dualPageView: Preference<DualPageView> = preferenceStore.getEnum(
+        "pref_dual_page_view",
+        DualPageView.NEVER,
+    )
+
     // endregion
 
     // region Color filter
@@ -189,13 +212,44 @@ class ReaderPreferences(
 
     // endregion
 
+    // region WebGpu
+
+    val transitionAnimation: Preference<TransitionAnimation> =
+        preferenceStore.getEnum("webgpu_transition_animation", TransitionAnimation.BASIC)
+
+    val transitionAnimationDual: Preference<TransitionAnimation> =
+        preferenceStore.getEnum("webgpu_dual_transition_animation", TransitionAnimation.BASIC)
+
+    val cutoutMode: Preference<CutoutMode> = preferenceStore.getEnum("webgpu_cutout_mode", CutoutMode.AVOID)
+
+    val cutoutModeDual: Preference<CutoutMode> = preferenceStore.getEnum("webgpu_dual_cutout_mode", CutoutMode.IGNORE)
+
+    val continuousMinWidth: Preference<Int> = preferenceStore.getInt("webgpu_continuous_minwidth", 100)
+
+    val continuousGap: Preference<Int> = preferenceStore.getInt("webgpu_continuous_gap", 10)
+
+    val disableDoubleTapGestures: Preference<Boolean> =
+        preferenceStore.getBoolean("webgpu_disable_double_tap_gestures", false)
+
+    /** In run order. */
+    val imageFilters: Preference<List<WebGpuShader>> = preferenceStore.getObjectFromString(
+        "webgpu_image_filters",
+        emptyList(),
+        WebGpuShaders::serialize,
+        WebGpuShaders::deserialize,
+    )
+
+    /** In run order. */
+    val tileFilters: Preference<List<WebGpuShader>> = preferenceStore.getObjectFromString(
+        "webgpu_tile_filters",
+        emptyList(),
+        WebGpuShaders::serialize,
+        WebGpuShaders::deserialize,
+    )
+
+    // endregion
+
     // SY -->
-
-    val readerThreads: Preference<Int> = preferenceStore.getInt("eh_reader_threads", 2)
-
-    val readerInstantRetry: Preference<Boolean> = preferenceStore.getBoolean("eh_reader_instant_retry", true)
-
-    val aggressivePageLoading: Preference<Boolean> = preferenceStore.getBoolean("eh_aggressive_page_loading", false)
 
     val cacheSize: Preference<String> = preferenceStore.getString("eh_cache_size", "75")
 
@@ -203,9 +257,13 @@ class ReaderPreferences(
 
     val smoothAutoScroll: Preference<Boolean> = preferenceStore.getBoolean("smooth_auto_scroll", true)
 
-    val preserveReadingPosition: Preference<Boolean> = preferenceStore.getBoolean("eh_preserve_reading_position", false)
+    val autoscrollGesturesEnabled: Preference<Boolean> =
+        preferenceStore.getBoolean("eh_util_autoscroll_gestures", false)
 
-    val preloadSize: Preference<Int> = preferenceStore.getInt("eh_preload_size", 10)
+    val autoscrollGestureToastsEnabled: Preference<Boolean> =
+        preferenceStore.getBoolean("eh_util_autoscroll_gesture_toasts", true)
+
+    val preserveReadingPosition: Preference<Boolean> = preferenceStore.getBoolean("eh_preserve_reading_position", false)
 
     val useAutoWebtoon: Preference<Boolean> = preferenceStore.getBoolean("eh_use_auto_webtoon", true)
 
@@ -236,8 +294,14 @@ class ReaderPreferences(
         val shouldInvertVertical: Boolean = false,
     ) {
         NONE(MR.strings.tapping_inverted_none),
-        HORIZONTAL(MR.strings.tapping_inverted_horizontal, shouldInvertHorizontal = true),
-        VERTICAL(MR.strings.tapping_inverted_vertical, shouldInvertVertical = true),
+        HORIZONTAL(
+            MR.strings.tapping_inverted_horizontal,
+            shouldInvertHorizontal = true,
+        ),
+        VERTICAL(
+            MR.strings.tapping_inverted_vertical,
+            shouldInvertVertical = true,
+        ),
         BOTH(MR.strings.tapping_inverted_both, shouldInvertHorizontal = true, shouldInvertVertical = true),
     }
 
@@ -248,10 +312,49 @@ class ReaderPreferences(
         LOWEST(47),
     }
 
+    // SY -->
     object ArchiveReaderMode {
         const val LOAD_FROM_FILE = 0
         const val LOAD_INTO_MEMORY = 1
         const val CACHE_TO_DISK = 2
+    }
+    // SY <--
+
+    enum class TransitionAnimation(val titleRes: StringResource) {
+        BASIC(MR.strings.transition_animation_basic),
+        FLIP(MR.strings.transition_animation_flip),
+        FLIP_LEFT(MR.strings.transition_animation_flip_left),
+        FLIP_RIGHT(
+            MR.strings.transition_animation_flip_right,
+        ),
+        STACK_LEFT(MR.strings.transition_animation_stack_left),
+        STACK_RIGHT(MR.strings.transition_animation_stack_right),
+        STACK_UP(
+            MR.strings.transition_animation_stack_up,
+        ),
+        STACK_DOWN(MR.strings.transition_animation_stack_down),
+        SPHERE(MR.strings.transition_animation_sphere),
+        CUBE_INSIDE(
+            MR.strings.transition_animation_cube_inside,
+        ),
+        CUBE_OUTSIDE(MR.strings.transition_animation_cube_outside),
+        FADE(MR.strings.transition_animation_fade),
+        FADE_WHITE(
+            MR.strings.transition_animation_fade_white,
+        ),
+        NONE(MR.strings.transition_animation_none),
+    }
+
+    enum class CutoutMode(val titleRes: StringResource) {
+        IGNORE(MR.strings.cutout_mode_ignore),
+        AVOID(MR.strings.cutout_mode_avoid),
+        SHIFT(MR.strings.cutout_mode_shift),
+    }
+
+    enum class DualPageView(val titleRes: StringResource) {
+        NEVER(MR.strings.dual_page_view_never),
+        ALWAYS(MR.strings.dual_page_view_always),
+        WIDE(MR.strings.dual_page_view_wide),
     }
 
     companion object {
@@ -276,6 +379,13 @@ class ReaderPreferences(
             MR.strings.scale_type_fit_height,
             MR.strings.scale_type_original_size,
             MR.strings.scale_type_smart_fit,
+        )
+
+        val ImageScaleTypeWebGpuViewer = listOf(
+            MR.strings.scale_type_fit_screen,
+            MR.strings.scale_type_fit_width,
+            MR.strings.scale_type_fit_height,
+            MR.strings.scale_type_original_size,
         )
 
         val ZoomStart = listOf(

@@ -10,6 +10,9 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import okhttp3.Response
 import tachiyomi.core.common.preference.Preference
 
+/**
+ * SY-specific file
+ */
 interface DataSaver {
 
     fun compress(imageUrl: String): String
@@ -21,11 +24,11 @@ interface DataSaver {
             }
         }
 
-        suspend fun HttpSource.getImage(page: Page, dataSaver: DataSaver): Response {
-            val imageUrl = page.imageUrl ?: return getImage(page)
+        suspend fun HttpSource.getImage(page: Page, existingSize: Long = 0L, dataSaver: DataSaver): Response {
+            val imageUrl = page.imageUrl ?: return getImage(page, existingSize)
             page.imageUrl = dataSaver.compress(imageUrl)
             return try {
-                getImage(page)
+                getImage(page, existingSize)
             } finally {
                 page.imageUrl = imageUrl
             }

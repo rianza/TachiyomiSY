@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,9 +36,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.KeyboardArrowDown
+import mihon.icons.materialsymbols.rounded.KeyboardArrowUp
 import tachiyomi.i18n.sy.SYMR
 import tachiyomi.presentation.core.i18n.stringResource
 
+/**
+ * SY-specific file
+ */
 @Composable
 fun ExhUtils(
     isVisible: Boolean,
@@ -50,6 +53,13 @@ fun ExhUtils(
     isAutoScroll: Boolean,
     isAutoScrollEnabled: Boolean,
     onToggleAutoscroll: (Boolean) -> Unit,
+    autoScrollGesturesSupported: Boolean,
+    autoScrollGesturesEnabled: Boolean,
+    onSetAutoScrollGesturesEnabled: (Boolean) -> Unit,
+    onClickAutoScrollGesturesHelp: () -> Unit,
+    autoScrollGestureToastsEnabled: Boolean,
+    onSetAutoScrollGestureToastsEnabled: (Boolean) -> Unit,
+    onClickAutoScrollGestureToastsHelp: () -> Unit,
     autoScrollFrequency: String,
     onSetAutoScrollFrequency: (String) -> Unit,
     onClickAutoScrollHelp: () -> Unit,
@@ -159,6 +169,79 @@ fun ExhUtils(
                         }
                     }
                 }
+                if (autoScrollGesturesSupported) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth(0.9f)
+                            .padding(horizontal = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .padding(vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(SYMR.strings.eh_autoscroll_gestures),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.SansSerif,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                        Switch(
+                            checked = autoScrollGesturesEnabled,
+                            onCheckedChange = onSetAutoScrollGesturesEnabled,
+                        )
+                        TextButton(
+                            onClick = onClickAutoScrollGesturesHelp,
+                        ) {
+                            Text(
+                                text = "?",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                    Row(
+                        Modifier
+                            .fillMaxWidth(0.9f)
+                            .padding(horizontal = 5.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .padding(vertical = 4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(SYMR.strings.eh_autoscroll_gesture_toasts),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.SansSerif,
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                        Switch(
+                            checked = autoScrollGestureToastsEnabled,
+                            onCheckedChange = onSetAutoScrollGestureToastsEnabled,
+                            enabled = autoScrollGesturesEnabled,
+                        )
+                        TextButton(
+                            onClick = onClickAutoScrollGestureToastsHelp,
+                        ) {
+                            Text(
+                                text = "?",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+                }
                 Row(
                     Modifier.fillMaxWidth(0.9f),
                     verticalAlignment = Alignment.CenterVertically,
@@ -229,9 +312,9 @@ fun ExhUtils(
         ) {
             Icon(
                 imageVector = if (isVisible) {
-                    Icons.Outlined.KeyboardArrowUp
+                    MaterialSymbols.Rounded.KeyboardArrowUp
                 } else {
-                    Icons.Outlined.KeyboardArrowDown
+                    MaterialSymbols.Rounded.KeyboardArrowDown
                 },
                 contentDescription = null,
             )
@@ -250,6 +333,13 @@ private fun ExhUtilsPreview() {
             isAutoScroll = true,
             isAutoScrollEnabled = true,
             onToggleAutoscroll = {},
+            autoScrollGesturesSupported = true,
+            autoScrollGesturesEnabled = true,
+            onSetAutoScrollGesturesEnabled = {},
+            onClickAutoScrollGesturesHelp = {},
+            autoScrollGestureToastsEnabled = true,
+            onSetAutoScrollGestureToastsEnabled = {},
+            onClickAutoScrollGestureToastsHelp = {},
             autoScrollFrequency = "3.0",
             onSetAutoScrollFrequency = {},
             onClickAutoScrollHelp = {},

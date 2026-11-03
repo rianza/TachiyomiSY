@@ -12,12 +12,16 @@ import exh.md.dto.AtHomeDto
 import exh.md.service.MangaDexService
 import exh.md.utils.MdApi
 import exh.md.utils.MdUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.Call
 import rx.Observable
-import tachiyomi.core.common.util.lang.withIOContext
 import kotlin.reflect.full.superclasses
 import kotlin.reflect.jvm.isAccessible
 
+/**
+ * SY-specific file
+ */
 class PageHandler(
     private val service: MangaDexService,
     private val mangaPlusHandler: MangaPlusHandler,
@@ -31,7 +35,7 @@ class PageHandler(
 ) {
 
     suspend fun fetchPageList(chapter: SChapter, usePort443Only: Boolean, dataSaver: Boolean, mangadex: Source): List<Page> {
-        return withIOContext {
+        return withContext(Dispatchers.IO) {
             val chapterResponse = service.viewChapter(MdUtil.getChapterId(chapter.url))
 
             if (chapterResponse.data.attributes.externalUrl != null && chapterResponse.data.attributes.pages == 0) {
@@ -107,26 +111,26 @@ class PageHandler(
         }
     }
 
-    fun getImageCall(page: Page): Call? {
+    fun getImageCall(page: Page, existingSize: Long): Call? {
         xLogD(page.imageUrl)
         return when {
             page.imageUrl?.contains("mangaplus", true) == true -> {
-                mangaPlusHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!), page)
+                mangaPlusHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!), page, existingSize)
             }
             page.imageUrl?.contains("comikey", true) == true -> {
-                comikeyHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, comikeyHandler.headers), page)
+                comikeyHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, comikeyHandler.headers), page, existingSize)
             }
             page.imageUrl?.contains("/bfs/comic/", true) == true -> {
-                bilibiliHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, bilibiliHandler.headers), page)
+                bilibiliHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, bilibiliHandler.headers), page, existingSize)
             }
             page.imageUrl?.contains("azuki", true) == true -> {
-                azukiHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, azukiHandler.headers), page)
+                azukiHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, azukiHandler.headers), page, existingSize)
             }
             page.imageUrl?.contains("mangahot", true) == true -> {
-                mangaHotHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, mangaHotHandler.headers), page)
+                mangaHotHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, mangaHotHandler.headers), page, existingSize)
             }
             page.imageUrl?.contains("namicomi", true) == true -> {
-                mangaHotHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, mangaHotHandler.headers), page)
+                mangaHotHandler.client.newCachelessCallWithProgress(GET(page.imageUrl!!, mangaHotHandler.headers), page, existingSize)
             }
             else -> null
         }

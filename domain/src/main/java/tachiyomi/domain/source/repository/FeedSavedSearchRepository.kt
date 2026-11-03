@@ -2,8 +2,12 @@ package tachiyomi.domain.source.repository
 
 import kotlinx.coroutines.flow.Flow
 import tachiyomi.domain.source.model.FeedSavedSearch
+import tachiyomi.domain.source.model.FeedWithSavedSearchName
 import tachiyomi.domain.source.model.SavedSearch
 
+/**
+ * SY-specific file
+ */
 interface FeedSavedSearchRepository {
 
     suspend fun getGlobal(): List<FeedSavedSearch>
@@ -22,9 +26,13 @@ interface FeedSavedSearchRepository {
 
     suspend fun countBySourceId(sourceId: Long): Long
 
+    suspend fun getAllFeedWithSavedSearchName(): List<FeedWithSavedSearchName>
+
     suspend fun delete(feedSavedSearchId: Long)
 
     suspend fun insert(feedSavedSearch: FeedSavedSearch): Long?
 
     suspend fun insertAll(feedSavedSearch: List<FeedSavedSearch>)
+
+    suspend fun updateAllOrders(orderedIds: List<Long>, global: Boolean, sourceId: Long? = null)
 }

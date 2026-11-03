@@ -1,14 +1,16 @@
 package eu.kanade.tachiyomi.ui.browse.source.feed
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
-import cafe.adriel.voyager.core.model.rememberScreenModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.Navigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import eu.kanade.presentation.browse.SourceFeedOrderScreen
 import eu.kanade.presentation.browse.SourceFeedScreen
 import eu.kanade.presentation.browse.components.SourceFeedAddDialog
 import eu.kanade.presentation.browse.components.SourceFeedDeleteDialog
@@ -19,72 +21,95 @@ import eu.kanade.tachiyomi.ui.browse.source.browse.SourceFilterDialog
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import eu.kanade.tachiyomi.util.system.toast
 import exh.md.follows.MangaDexFollowsScreen
-import exh.ui.ifSourcesLoaded
 import exh.util.nullIfBlank
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.interactor.GetRemoteManga
 import tachiyomi.domain.source.model.SavedSearch
 import tachiyomi.presentation.core.screens.LoadingScreen
 
+/**
+ * SY-specific file
+ */
 class SourceFeedScreen(val sourceId: Long) : Screen() {
 
     @Composable
     override fun Content() {
-        if (!ifSourcesLoaded()) {
+        val viewModel = assistedMetroViewModel<SourceFeedViewModel, SourceFeedViewModel.Factory> {
+            create(sourceId = sourceId)
+        }
+        val state by viewModel.state.collectAsState()
+        val navigator = LocalNavigator.currentOrThrow
+        val context = LocalContext.current
+
+        if (state.source == null) {
             LoadingScreen()
             return
         }
 
-        val screenModel = rememberScreenModel { SourceFeedScreenModel(sourceId) }
-        val state by screenModel.state.collectAsState()
-        val navigator = LocalNavigator.currentOrThrow
-        val context = LocalContext.current
+        BackHandler(enabled = state.showingFeedOrderScreen) {
+            viewModel.setShowingFeedOrderScreen(false)
+        }
+        Crossfade(
+            targetState = state.showingFeedOrderScreen,
+            label = "source_feed_order_crossfade",
+        ) { showOrder ->
+            if (showOrder) {
+                SourceFeedOrderScreen(
+                    state = state,
+                    onClickDelete = viewModel::openDeleteFeed,
+                    onChangeOrder = viewModel::changeOrder,
+                    navigateUp = { viewModel.setShowingFeedOrderScreen(false) },
+                )
+            } else {
+                SourceFeedScreen(
+                    name = state.source?.name ?: return@Crossfade,
+                    isLoading = state.isLoading,
+                    items = state.items,
+                    hasFilters = state.filters.isNotEmpty(),
+                    onFabClick = viewModel::openFilterSheet,
+                    onClickBrowse = { onBrowseClick(navigator, state.source ?: return@SourceFeedScreen) },
+                    onClickLatest = { onLatestClick(navigator, state.source ?: return@SourceFeedScreen) },
+                    onClickSavedSearch = { onSavedSearchClick(navigator, state.source ?: return@SourceFeedScreen, it) },
+                    onClickDelete = viewModel::openDeleteFeed,
+                    onClickManga = { onMangaClick(navigator, it) },
+                    onClickBack = { navigator.pop() },
+                    onClickSearch = { onSearchClick(navigator, state.source ?: return@SourceFeedScreen, it) },
+                    searchQuery = state.searchQuery,
+                    onSearchQueryChange = viewModel::search,
+                    getMangaState = { viewModel.getManga(initialManga = it) },
+                    onSortFeedClick = { viewModel.setShowingFeedOrderScreen(true) },
+                )
+            }
+        }
 
-        SourceFeedScreen(
-            name = screenModel.source.name,
-            isLoading = state.isLoading,
-            items = state.items,
-            hasFilters = state.filters.isNotEmpty(),
-            onFabClick = screenModel::openFilterSheet,
-            onClickBrowse = { onBrowseClick(navigator, screenModel.source) },
-            onClickLatest = { onLatestClick(navigator, screenModel.source) },
-            onClickSavedSearch = { onSavedSearchClick(navigator, screenModel.source, it) },
-            onClickDelete = screenModel::openDeleteFeed,
-            onClickManga = { onMangaClick(navigator, it) },
-            onClickSearch = { onSearchClick(navigator, screenModel.source, it) },
-            searchQuery = state.searchQuery,
-            onSearchQueryChange = screenModel::search,
-            getMangaState = { screenModel.getManga(initialManga = it) },
-        )
-
-        val onDismissRequest = screenModel::dismissDialog
+        val onDismissRequest = viewModel::dismissDialog
         when (val dialog = state.dialog) {
-            is SourceFeedScreenModel.Dialog.AddFeed -> {
+            is SourceFeedViewModel.Dialog.AddFeed -> {
                 SourceFeedAddDialog(
                     onDismissRequest = onDismissRequest,
                     name = dialog.name,
                     addFeed = {
-                        screenModel.createFeed(dialog.feedId)
+                        viewModel.createFeed(dialog.feedId)
                         onDismissRequest()
                     },
                 )
             }
-            is SourceFeedScreenModel.Dialog.DeleteFeed -> {
+            is SourceFeedViewModel.Dialog.DeleteFeed -> {
                 SourceFeedDeleteDialog(
                     onDismissRequest = onDismissRequest,
                     deleteFeed = {
-                        screenModel.deleteFeed(dialog.feed)
+                        viewModel.deleteFeed(dialog.feed)
                         onDismissRequest()
                     },
                 )
             }
-            SourceFeedScreenModel.Dialog.Filter -> {
+            SourceFeedViewModel.Dialog.Filter -> {
                 SourceFilterDialog(
                     onDismissRequest = onDismissRequest,
                     filters = state.filters,
                     onReset = {},
                     onFilter = {
-                        screenModel.onFilter { query, filters ->
+                        viewModel.onFilter { query, filters ->
                             onBrowseClick(
                                 navigator = navigator,
                                 sourceId = sourceId,
@@ -93,12 +118,12 @@ class SourceFeedScreen(val sourceId: Long) : Screen() {
                             )
                         }
                     },
-                    onUpdate = screenModel::setFilters,
-                    startExpanded = screenModel.startExpanded,
+                    onUpdate = viewModel::setFilters,
+                    startExpanded = viewModel.startExpanded,
                     onSave = {},
                     savedSearches = state.savedSearches,
                     onSavedSearch = { search ->
-                        screenModel.onSavedSearch(
+                        viewModel.onSavedSearch(
                             search,
                             onBrowseClick = { query, searchId ->
                                 onBrowseClick(
@@ -114,13 +139,13 @@ class SourceFeedScreen(val sourceId: Long) : Screen() {
                         )
                     },
                     onSavedSearchPress = { search ->
-                        screenModel.onSavedSearchAddToFeed(search) {
+                        viewModel.onSavedSearchAddToFeed(search) {
                             context.toast(it)
                         }
                     },
-                    openMangaDexRandom = if (screenModel.sourceIsMangaDex) {
+                    openMangaDexRandom = if (state.sourceIsMangaDex) {
                         {
-                            screenModel.onMangaDexRandom {
+                            viewModel.onMangaDexRandom {
                                 navigator.replace(
                                     BrowseSourceScreen(
                                         sourceId,
@@ -132,7 +157,7 @@ class SourceFeedScreen(val sourceId: Long) : Screen() {
                     } else {
                         null
                     },
-                    openMangaDexFollows = if (screenModel.sourceIsMangaDex) {
+                    openMangaDexFollows = if (state.sourceIsMangaDex) {
                         {
                             navigator.replace(MangaDexFollowsScreen(sourceId))
                         }
@@ -145,7 +170,7 @@ class SourceFeedScreen(val sourceId: Long) : Screen() {
         }
 
         BackHandler(state.searchQuery != null) {
-            screenModel.search(null)
+            viewModel.search(null)
         }
     }
 

@@ -12,6 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -26,6 +27,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
@@ -48,13 +50,16 @@ fun ReaderAppBars(
     chapterTitle: String?,
     navigateUp: () -> Unit,
     onClickTopAppBar: () -> Unit,
+    // SY -->
     // bookmarked: Boolean,
     // onToggleBookmarked: () -> Unit,
+    // SY <--
     onOpenInWebView: (() -> Unit)?,
     onOpenInBrowser: (() -> Unit)?,
     onShare: (() -> Unit)?,
 
     chapterNavigatorType: ChapterNavigatorType,
+    verticalNavigatorHeight: Float,
     onNextChapter: () -> Unit,
     enabledNext: Boolean,
     onPreviousChapter: () -> Unit,
@@ -62,6 +67,7 @@ fun ReaderAppBars(
     currentPage: Int,
     totalPages: Int,
     onPageIndexChange: (Int) -> Unit,
+    onPageIndexChangeFinished: () -> Unit,
 
     readingMode: ReadingMode,
     onClickReadingMode: () -> Unit,
@@ -76,6 +82,13 @@ fun ReaderAppBars(
     isAutoScroll: Boolean,
     isAutoScrollEnabled: Boolean,
     onToggleAutoscroll: (Boolean) -> Unit,
+    autoScrollGesturesSupported: Boolean,
+    autoScrollGesturesEnabled: Boolean,
+    onSetAutoScrollGesturesEnabled: (Boolean) -> Unit,
+    onClickAutoScrollGesturesHelp: () -> Unit,
+    autoScrollGestureToastsEnabled: Boolean,
+    onSetAutoScrollGestureToastsEnabled: (Boolean) -> Unit,
+    onClickAutoScrollGestureToastsHelp: () -> Unit,
     autoScrollFrequency: String,
     onSetAutoScrollFrequency: (String) -> Unit,
     onClickAutoScrollHelp: () -> Unit,
@@ -129,6 +142,13 @@ fun ReaderAppBars(
                     isAutoScroll = isAutoScroll,
                     isAutoScrollEnabled = isAutoScrollEnabled,
                     onToggleAutoscroll = onToggleAutoscroll,
+                    autoScrollGesturesSupported = autoScrollGesturesSupported,
+                    autoScrollGesturesEnabled = autoScrollGesturesEnabled,
+                    onSetAutoScrollGesturesEnabled = onSetAutoScrollGesturesEnabled,
+                    onClickAutoScrollGesturesHelp = onClickAutoScrollGesturesHelp,
+                    autoScrollGestureToastsEnabled = autoScrollGestureToastsEnabled,
+                    onSetAutoScrollGestureToastsEnabled = onSetAutoScrollGestureToastsEnabled,
+                    onClickAutoScrollGestureToastsHelp = onClickAutoScrollGestureToastsHelp,
                     autoScrollFrequency = autoScrollFrequency,
                     onSetAutoScrollFrequency = onSetAutoScrollFrequency,
                     onClickAutoScrollHelp = onClickAutoScrollHelp,
@@ -156,19 +176,26 @@ fun ReaderAppBars(
                     ) {
                         Row {
                             Spacer(modifier = Modifier.width(MaterialTheme.padding.small))
-                            ChapterNavigator(
-                                type = chapterNavigatorType,
-                                onNextChapter = onNextChapter,
-                                enabledNext = enabledNext,
-                                onPreviousChapter = onPreviousChapter,
-                                enabledPrevious = enabledPrevious,
-                                currentPage = currentPage,
-                                // SY -->
-                                currentPageText = currentPageText,
-                                // SY <--
-                                totalPages = totalPages,
-                                onPageIndexChange = onPageIndexChange,
-                            )
+                            Box(
+                                modifier = Modifier.fillMaxHeight(),
+                                contentAlignment = Alignment.BottomCenter,
+                            ) {
+                                ChapterNavigator(
+                                    modifier = Modifier.fillMaxHeight(verticalNavigatorHeight),
+                                    type = chapterNavigatorType,
+                                    onNextChapter = onNextChapter,
+                                    enabledNext = enabledNext,
+                                    onPreviousChapter = onPreviousChapter,
+                                    enabledPrevious = enabledPrevious,
+                                    currentPage = currentPage,
+                                    // SY -->
+                                    currentPageText = currentPageText,
+                                    // SY <--
+                                    totalPages = totalPages,
+                                    onPageIndexChange = onPageIndexChange,
+                                    onPageIndexChangeFinished = onPageIndexChangeFinished,
+                                )
+                            }
                         }
                     }
                     Spacer(modifier = Modifier.weight(1f))
@@ -197,6 +224,7 @@ fun ReaderAppBars(
                         // SY <--
                         totalPages = totalPages,
                         onPageIndexChange = onPageIndexChange,
+                        onPageIndexChangeFinished = onPageIndexChangeFinished,
                     )
                 }
                 ReaderBottomBar(
